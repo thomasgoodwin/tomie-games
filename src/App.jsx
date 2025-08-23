@@ -1,35 +1,63 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState } from "react";
+import { Button } from "@chakra-ui/react";
+import { motion, AnimatePresence } from "motion/react";
+import { Flex } from "@chakra-ui/react"
+import QuestionCard from "./components/Custom/QuestionCard";
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [gameInfo, setGameInfo] = useState(undefined);
+  const animation = {
+    initial: { opacity: 0, scale: 0.9 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.9 },
+    transition: { duration: 0.2 }
+  };
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+  const questions = {
+    "question-0": {
+      "category": "Technology",
+      "question": "In 1976, these two college dropouts founded Apple Computer, Inc. ",
+      "answer": "Steve Jobs and Steve Wozniak"
+    },
+    "question-1": {
+      "category": "Animals",
+      "question": "Weighing up to 2,000 pounds, this is the largest mammal in North America.",
+      "answer": "Johannes Gutenberg"
+    },
+    "question-2": {
+      "category": "Movies",
+      "question": "What year was the original “Jurassic Park” released in theatres? ",
+      "answer": "1993"
+    },
+  };
 
-export default App
+  return <AnimatePresence mode="wait">
+    {gameInfo === undefined ? (
+      <motion.div
+        key="start-gaame"
+        {...animation}
+      >
+        <Button className="start-game-button" onClick={() => setGameInfo({})}>
+          Start Game
+        </Button>
+      </motion.div>
+    ) : (
+      <motion.div
+        className="game-dashboard"
+        key="dashboard"
+        {...animation}
+      >
+        <Flex gap="4" width={"80%"}>
+          {Object.keys(questions).map((questionId) => {
+            return <QuestionCard
+              question={questions[questionId]}
+            />
+          })}
+        </Flex>
+      </motion.div>
+    )}
+  </AnimatePresence>
+};
+
+export default App;
