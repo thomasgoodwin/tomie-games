@@ -23,7 +23,7 @@ function App() {
     "question-1": {
       "category": "Animals",
       "question": "Weighing up to 2,000 pounds, this is the largest mammal in North America.",
-      "answer": "Johannes Gutenberg"
+      "answer": "Bison"
     },
     "question-2": {
       "category": "Movies",
