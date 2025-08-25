@@ -39,7 +39,7 @@ function App() {
         {...animation}
       >
         <Button className="start-game-button" onClick={() => setGameInfo({})}>
-          Start Game
+          Start Game (Test)
         </Button>
       </motion.div>
     ) : (
