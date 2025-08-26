@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Button } from "@chakra-ui/react";
+import { Button, Input, Group, Flex } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "motion/react";
-import { Flex } from "@chakra-ui/react"
 import QuestionCard from "./components/Custom/QuestionCard";
 import './App.css'
+import PlayerList from "./components/Custom/PlayerList";
 
 function App() {
   const [gameInfo, setGameInfo] = useState(undefined);
@@ -13,6 +13,9 @@ function App() {
     exit: { opacity: 0, scale: 0.9 },
     transition: { duration: 0.2 }
   };
+
+  const [playerList, setPlayerList] = useState([]);
+  const [newPlayerName, setNewPlayerName] = useState("");
 
   const questions = {
     "question-0": {
@@ -35,12 +38,38 @@ function App() {
   return <AnimatePresence mode="wait">
     {gameInfo === undefined ? (
       <motion.div
-        key="start-gaame"
+        key="start-game"
+        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
         {...animation}
       >
-        <Button className="start-game-button" onClick={() => setGameInfo({})}>
-          Start Game (Test)
-        </Button>
+        <div style={{ display: "flex", justifyContent: 'center' }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+            <h1 style={{ fontWeight: "bold", fontSize: "2rem" }}>Player List:</h1>
+            <PlayerList players={playerList} />
+            <Group attached w="full" maxW="sm">
+              <Input
+                flex="1"
+                placeholder="Name..."
+                variant="outline"
+                value={newPlayerName}
+                onChange={(e) => {
+                  setNewPlayerName(e.currentTarget.value)
+                }}
+              />
+              <Button bg="bg.subtle" variant="outline" onClick={() => {
+                setPlayerList([newPlayerName, ...playerList]);
+                setNewPlayerName("")
+              }}>
+                Submit
+              </Button>
+            </Group>
+          </div>
+        </div>
+        <div>
+          <Button className="start-game-button" onClick={() => setGameInfo({})} disabled={playerList.length === 0}>
+            Start Game
+          </Button>
+        </div>
       </motion.div>
     ) : (
       <motion.div
