@@ -29,8 +29,10 @@ const QuestionCard = ({ question }) => {
   };
 
   return <Card.Root onClick={() => setShowModal(true)}>
-    <Card.Body>
-      {question.category}
+    <Card.Body textAlign='center'>
+      <b>
+        {question.category}
+      </b>
     </Card.Body>
     <Portal>
       {showModal && <div onClick={(e) => e.stopPropagation()}>
@@ -70,7 +72,7 @@ const QuestionCard = ({ question }) => {
               </MotionButton>
               <div style={{ display: "flex", justifyContent: 'right' }}>
                 {revealed && <Button onClick={() => {
-                  
+
                 }}>Assign Points</Button>}
               </div>
             </div>

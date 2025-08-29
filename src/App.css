@@ -46,3 +46,27 @@
   left: 0;
   top: 0;
 }
+
+.error-message {
+  color: #D22B2B;
+}
+
+.player-list {
+  border: 1px solid color-mix(in srgb, var(--chakra-colors-fg-muted) 80%, transparent);
+  border-radius: 4px;
+  padding: 1rem 2rem;
+}
+
+.player-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.player-list-item> :nth-child(1) {
+  margin-right: auto;
+}
+
+.player-list-item> :nth-child(2) {
+  margin-left: auto;
+}
