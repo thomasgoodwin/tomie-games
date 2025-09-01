@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Input, Group, Grid, GridItem, Blockquote } from "@chakra-ui/react";
+import { Button, Input, Group, Grid, GridItem, Blockquote, Flex } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "motion/react";
 import QuestionCard from "./components/Custom/QuestionCard";
 import PlayerList from "./components/Custom/PlayerList";
@@ -20,9 +20,15 @@ import Abomasnow from "./assets/pokemon/obamasnow400.png";
 
 import PennyFarthing from "./assets/nostalgia-bait/Man-on-a-huge-high-wheel-bikes.jpg";
 import Spam from "./assets/nostalgia-bait/spam.png";
-import BabeRuth from "./assets/nostalgia-bait/BabeRuth.jpg"
+import BabeRuth from "./assets/nostalgia-bait/BabeRuth.jpg";
+
+import ShieldGuy from "./assets/anime/Naofumi_Iwatani.webp";
 
 import Shaihulud from "./assets/audio/shai-hulud.mp3";
+
+import Georgia from "./assets/nations/ge.svg";
+import Russia from "./assets/nations/ru.svg";
+import Turkey from "./assets/nations/tr.svg";
 
 import { wordToHex } from "./util";
 import './App.css';
@@ -100,10 +106,10 @@ const questions = {
     "active": true
   },
   "anime-0": {
-    "category": "Anime",
-    "question": <>TODO</>,
-    "answer": "TODO",
-    "value": 400,
+    "category": "Another World",
+    "question": <>In this popular isekai that released in 2012, if you died in the game, you died in real life.</>,
+    "answer": "Sword Art Online",
+    "value": 100,
     "active": true
   },
   "name-the-song-1": {
@@ -163,10 +169,18 @@ const questions = {
     "active": true
   },
   "anime-1": {
-    "category": "Anime",
-    "question": <>TODO</>,
-    "answer": "TODO",
-    "value": 400,
+    "category": "Another World",
+    "question": <>
+      <p>
+        Name the anime:
+      </p>
+      <img
+        src={ShieldGuy}
+        alt=""
+      />
+    </>,
+    "answer": "The Rising of the Shield Hero (Shield Hero)",
+    "value": 200,
     "active": true
   },
   "name-the-song-2": {
@@ -240,10 +254,10 @@ const questions = {
     "active": true
   },
   "anime-2": {
-    "category": "Anime",
-    "question": <>TODO</>,
-    "answer": "TODO",
-    "value": 400,
+    "category": "Another World",
+    "question": <>A Demon Lord escapes his world and arrives in modern Tokyo, where the lack of magic in the world leads him to take on a part-time job at a fast food restaurant.</>,
+    "answer": "The Devil is a Part-Timer!",
+    "value": 300,
     "active": true
   },
   "name-the-song-3": {
@@ -308,9 +322,9 @@ const questions = {
     "active": true
   },
   "anime-3": {
-    "category": "Anime",
-    "question": <>TODO</>,
-    "answer": "TODO",
+    "category": "Another World",
+    "question": <>What is the name of the first isekai anime?</>,
+    "answer": "Aura Battler Dunbine",
     "value": 400,
     "active": true
   },
@@ -328,14 +342,31 @@ const LastQuestion = ({ gameState }) => {
 
   return <div style={{ display: "flex", justifyContent: "center" }}>
     {allAnswered && <div style={{ width: "50%", borderRadius: "4px", border: "1px solid white", padding: "1rem", margin: "1rem" }}>
-      <h2 style={{ fontSize: "2rem" }}><b>Final Question</b></h2>
-      <h3>catgegory</h3>
+      <h2 style={{ fontSize: "2.5rem" }}><b>Final Question</b></h2>
+      <h3 style={{ fontSize: "1.75rem" }}>Nation Silhouette</h3>
       <div className="question">
         <Blockquote.Root variant="solid" marginLeft={"1rem"}>
           <Blockquote.Content>
-            {showFinalQuestion && <p>
-              test1
-            </p>}
+            {showFinalQuestion && <div>
+              <p>Name the 3 countries based on their silhouettes. For each you get correct, you get a third of your wager. You may only submit 3 countries.</p>
+              <div style={{ gap: "1rem" }}>
+                <img
+                  src={Georgia}
+                  alt=""
+                  style={{ width: "300px", filter: "invert(1)" }}
+                />
+                <img
+                  src={Russia}
+                  alt=""
+                  style={{ width: "300px", filter: "invert(1)" }}
+                />
+                <img
+                  src={Turkey}
+                  alt=""
+                  style={{ width: "300px", filter: "invert(1)" }}
+                />
+              </div>
+            </div>}
           </Blockquote.Content>
         </Blockquote.Root>
         {showFinalAnswer && <p>
@@ -467,7 +498,7 @@ function App() {
         </div>
         <div className="game-dashboard">
           <Grid templateColumns="repeat(7, 1fr)" gap="6">
-            {["Name the Song", "Name the Place", "Who's that Pokemon?", "Stocks", "Bookworms", "Nostalgia Bait", "Anime"].map((v) => {
+            {["Name the Song", "Name the Place", "Who's that Pokemon?", "Stocks", "Bookworms", "Nostalgia Bait", "Another World"].map((v) => {
               return <GridItem>
                 <b style={{ fontSize: "1.2rem" }}>
                   {v}
@@ -481,7 +512,7 @@ function App() {
                   question={gameState[questionId]}
                   players={playerList}
                   setPlayerList={setPlayerList}
-                  disabled={gameState[questionId].active === false}
+                  disabled={!gameState[questionId].active}
                   gameState={gameState}
                   setGameState={setGameState}
                 />

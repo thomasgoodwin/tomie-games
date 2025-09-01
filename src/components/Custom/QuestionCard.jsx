@@ -38,7 +38,7 @@ const QuestionCard = ({ questionId, question, players, setPlayerList, disabled, 
 
   return <Card.Root onClick={disabled ? undefined : () => setShowModal(true)}>
     <Card.Body textAlign='center'>
-      <b style={{ textDecoration: disabled ? "line-through" : undefined }}>
+      <b style={{ color: disabled ? "black" : "undefined" }}>
         {question.value}
       </b>
     </Card.Body>
@@ -120,7 +120,6 @@ const QuestionCard = ({ questionId, question, players, setPlayerList, disabled, 
                   <Button
                     disabled={removePointsColor === "black"}
                     onClick={() => {
-                      setShowModal(false);
                       let copy = structuredClone(players)
                       Object.keys(copy).forEach((player) => {
                         if (copy[player].color === removePointsColor) {
@@ -167,12 +166,18 @@ const QuestionCard = ({ questionId, question, players, setPlayerList, disabled, 
                       setShowModal(false);
                       let copy = structuredClone(players);
                       Object.keys(copy).forEach((player) => {
-                        if (copy[player].color === removePointsColor) {
+                        if (copy[player].color === awardPointsColor) {
                           copy[player].points += question.value;
                         }
                       });
                       setPlayerList(copy);
-                      let gameStateCopy = structuredClone(gameState);
+                      console.log(copy);
+                      let gameStateCopy = {};
+                      for (var k in gameState) {
+                        if (k !== question) {
+                          gameStateCopy[k] = gameState[k];
+                        }
+                      };
                       gameStateCopy[questionId].active = false;
                       setGameState(gameStateCopy);
                     }}
