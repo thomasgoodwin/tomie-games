@@ -1,5 +1,6 @@
 import { List, Menu, Portal, Button, ColorSwatch } from "@chakra-ui/react";
 import { LuCircleCheck, LuCircleSlash2 } from "react-icons/lu";
+import { wordToHex } from "@/util";
 
 const PlayerList = ({ players, setPlayerList }) => {
   let playerCount = Object.keys(players).length;
@@ -23,19 +24,19 @@ const PlayerList = ({ players, setPlayerList }) => {
               }}>
                 <Menu.Trigger asChild>
                   <Button variant="outline" size="sm">
-                    Color <ColorSwatch value={players[name].color ?? "black"} />
+                    Color <ColorSwatch value={wordToHex[players[name].color] ?? "black"} />
                   </Button>
                 </Menu.Trigger>
                 <Portal>
                   <Menu.Positioner>
                     <Menu.Content>
-                      <Menu.Item value="#FF3131">
+                      <Menu.Item value="red">
                         <ColorSwatch value={"#FF3131"} />Red
                       </Menu.Item>
-                      <Menu.Item value="#002fa7">
+                      <Menu.Item value="blue">
                         <ColorSwatch value={"#002fa7"} />Blue
                       </Menu.Item>
-                      <Menu.Item value="#FFF01F">
+                      <Menu.Item value="yellow">
                         <ColorSwatch value={"#FFF01F "} />Yellow
                       </Menu.Item>
                       <Menu.Item value="white">

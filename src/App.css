@@ -70,3 +70,126 @@
 .player-list-item> :nth-child(2) {
   margin-left: auto;
 }
+
+.shadow-dance-text {
+  color: #fff;
+  text-shadow: 0px 0px 0 #D3AF37, 0px 0px 0 #168118;
+  animation: shadow-dance 22s infinite;
+}
+
+@keyframes shadow-dance {
+
+  0%,
+  10% {
+    text-shadow: 0px 0px 0 #D3AF37, 0px 0px 0 #168118;
+  }
+
+  15% {
+    text-shadow: -4px -4px 0 #168118, -8px -8px 0 #D3AF37;
+  }
+
+  20% {
+    text-shadow: 4px 4px 0 #D3AF37, 8px 8px 0 #168118;
+  }
+
+  25% {
+    text-shadow: 0px 0px 0 #D3AF37, 0px 0px 0 #168118;
+  }
+
+  100% {
+    text-shadow: 0px 0px 0 #D3AF37, 0px 0px 0 #168118;
+  }
+}
+
+.melting-text-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.melting-text {
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #fff;
+  position: relative;
+  animation: melt 22s infinite ease-in-out;
+  background: linear-gradient(90deg, #ff6f61, #ffbd44, #ff6f61);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.melting-text::before,
+.melting-text::after {
+  content: 'CRASHOUT';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #ff6f61, #ffbd44, #ff6f61);
+  -webkit-background-clip: text;
+  color: transparent;
+  z-index: -1;
+  transform: scaleY(1);
+  opacity: 0.5;
+  animation: drip 22s infinite ease-in-out;
+}
+
+.melting-text::after {
+  filter: blur(10px);
+  opacity: 0.3;
+}
+
+/* Keyframes for melting effect */
+@keyframes melt {
+
+  0%,
+  4.54% {
+    transform: translateY(0);
+  }
+
+  4.54%,
+  9.09% {
+    transform: translateY(12px);
+  }
+
+  9.09%,
+  13.63% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes drip {
+
+  0%,
+  4.54% {
+    transform: scaleY(1);
+    opacity: 0.5;
+  }
+
+  4.54%,
+  9.09% {
+    transform: scaleY(1.25);
+    opacity: 0.7;
+  }
+
+  9.09%,
+  13.63% {
+    transform: scaleY(1);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scaleY(1);
+    opacity: 0.5;
+  }
+}
+
+.who-that {
+  border-radius: 4px;
+  background-color: #3498db;
+  padding: 1rem;
+}
