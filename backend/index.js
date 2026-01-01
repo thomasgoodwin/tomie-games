@@ -33,11 +33,12 @@ const limiter = rateLimit({
   max: 30,             // max 30 requests per IP per window
   message: 'Too many requests, please try again later.',
 });
-//app.use(limiter);
+app.use(limiter);
 
 // Secret validation middleware
 const requireSecret = (req, res, next) => {
   const clientSecret = req.get('X-Queue-Secret');
+  console.log(clientSecret, secret)
   if (clientSecret !== secret) {
     return res.status(403).send('No secret or bad secret');
   }

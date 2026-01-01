@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import YouTubePlayer from "../../components/Custom/YoutubePlayer";
 import { Input, Button } from "@chakra-ui/react";
+import { isLocalhost } from "@/util";
 
 const fetchQueue = async (secret) => {
-  const apiUrl = import.meta.env.VITE_BACKEND_URL;
+  const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
   const response = await fetch(`${apiUrl}/songs`, {
     headers: { 'X-Queue-Secret': secret },
   });
