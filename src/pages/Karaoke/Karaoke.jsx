@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import YouTubePlayer from "../../components/Custom/YoutubePlayer";
-import { Input, Button } from "@chakra-ui/react";
-import { isLocalhost } from "@/util";
+import { getYouTubeTitle, isLocalhost } from "@/util";
 import { useQueueSocket } from "@/components/Custom/useQueueSocket";
 import { v4 as uuidv4 } from 'uuid';
+import {
+  Dialog,
+  Portal,
+  Input,
+  Button
+} from '@chakra-ui/react'
 
 const fetchQueue = async (secret) => {
   const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
@@ -16,8 +21,7 @@ const fetchQueue = async (secret) => {
   return response.json();
 };
 
-const addSongToDB = async (secret, newLink) => {
-  const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
+const sendAddRequest = async (apiUrl, secret, newLink, title) => {
   const response = await fetch(`${apiUrl}/songs`, {
     method: 'POST',
     headers: {
@@ -27,7 +31,7 @@ const addSongToDB = async (secret, newLink) => {
     body: JSON.stringify({
       id: uuidv4(),
       url: newLink,
-      title: "placeholder"
+      title: title
     })
   });
   if (!response.ok) {
@@ -40,10 +44,23 @@ const Karaoke = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newLink, setNewLink] = useState("");
+  const [manualTitle, setManualTitle] = useState("");
+  const [showManualTitleModal, setShowManualTitleModal] = useState(false);
+  const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
   const secret = window.location.pathname
     .split("/")
     .filter(Boolean)
     .pop();
+
+  const addSongToDB = async (newLink) => {
+    const title = await getYouTubeTitle(newLink);
+    if (title === undefined) {
+      setShowManualTitleModal(true);
+    } else {
+      sendAddRequest(apiUrl, secret, newLink, title);
+      setNewLink("");
+    }
+  }
 
   useQueueSocket(
     secret,
@@ -78,6 +95,58 @@ const Karaoke = () => {
     return <p>Error: {error}</p>;
   }
   return <div style={{ display: "flex", justifyContent: "space-betwen", padding: "2rem", gap: "2rem" }}>
+    <Dialog.Root
+      role="alertdialog"
+      motionPreset="slide-in-bottom"
+      lazyMount
+      open={showManualTitleModal}
+      onOpenChange={(e) => setShowManualTitleModal(e.open)}
+    >
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Dialog.Header>
+              <Dialog.Title>Set a Title Manually</Dialog.Title>
+            </Dialog.Header>
+            <Dialog.Body>
+              <p>
+                This song is blocked by the karaoke site but can still be played on youtube.
+              </p>
+              <p>
+                Please input a name manually so we know which song it is on the queue.
+              </p>
+              <Input
+                size="md"
+                value={manualTitle}
+                placeholder="Title..."
+                variant="subtle"
+                backgroundColor={"white"}
+                height="50px"
+                color="black"
+                onChange={(e) => {
+                  setManualTitle(e.target.value)
+                }}
+              />
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Button
+                disabled={manualTitle.length < 3}
+                variant='ghost'
+                onClick={async () => {
+                  setShowManualTitleModal(false);
+                  setManualTitle("");
+                  setNewLink("");
+                  await sendAddRequest(apiUrl, secret, newLink, manualTitle);
+                }}
+              >
+                Confirm
+              </Button>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
     <div style={{ width: "80%" }}>
       <YouTubePlayer queue={queue} setQueue={setQueue} secret={secret} />
     </div>
@@ -116,8 +185,7 @@ const Karaoke = () => {
           paddingInline={"0px"}
           padding="1rem"
           onClick={() => {
-            addSongToDB(secret, newLink);
-            setNewLink("");
+            addSongToDB(newLink);
           }}
         >
           <strong>+</strong>

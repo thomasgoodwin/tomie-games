@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
 import http from "http";
 import { Server } from "socket.io";
+import { generateAdminToken, hashToken } from './auth';
 
 dotenv.config();
 
@@ -22,6 +23,14 @@ db.prepare(`
     url TEXT NOT NULL
   )
 `).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash TEXT NOT NULL UNIQUE,
+  );
+`).run();
+
 
 app.use(express.json());
 
@@ -93,6 +102,54 @@ app.post('/songs', requireSecret, (req, res) => {
     console.error(e);
     res.status(500).send('Internal Error');
   }
+});
+
+app.get("/admin", requireSecret, (req, res) => {
+  const stmt = db.prepare(`
+    SELECT EXISTS (
+      SELECT 1
+      FROM admins
+    ) AS has_admin;
+  `).run(tokenHash);
+
+  const admin = stmt.get(tokenHash);
+  if (admin) {
+    res.send("true");
+  } else {
+    res.send("false");
+  }
+});
+
+app.post("/admin/create", requireSecret, (req, res) => {
+  const token = generateAdminToken();
+  const tokenHash = hashToken(token);
+
+  db.prepare(
+    "INSERT INTO admins (token_hash) VALUES (?)"
+  ).run(tokenHash);
+
+  io.to(secret).emit("queue:updated", {
+    type: "admin-added"
+  });
+
+  res.json({
+    adminToken: token,
+  });
+});
+
+app.delete("/admin/:id", requireSecret, (req, res) => {
+  const token = req.params.id;
+  const tokenHash = hashToken(token);
+
+  db.prepare(
+    "DELETE FROM admins WHERE id = ?;"
+  ).run(tokenHash);
+
+  io.to(secret).emit("queue:updated", {
+    type: "admin-removed"
+  });
+
+  res.send(200);
 });
 
 // Get the queue
