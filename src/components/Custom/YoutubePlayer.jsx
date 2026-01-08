@@ -28,11 +28,12 @@ const loadYouTubeAPI = () => {
   });
 }
 
-const YouTubePlayer = ({ queue, setQueue, secret }) => {
+const YouTubePlayer = ({ queue, secret, adminActive, isAdmin }) => {
   const playerRef = useRef(null);
   const containerRef = useRef(null);
   const [started, setStarted] = useState(false);
   const [error, setError] = useState("")
+  const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
 
   const onPlayerStateChange = (e) => {
     if (e.data === END_OF_SONG_CODE) {
@@ -69,7 +70,7 @@ const YouTubePlayer = ({ queue, setQueue, secret }) => {
     };
   }, []);
 
-  const startKaraoke = () => {
+  const startKaraoke = async () => {
     if (!playerRef.current || queue.length === 0) {
       return;
     }
@@ -83,7 +84,6 @@ const YouTubePlayer = ({ queue, setQueue, secret }) => {
     if (!playerRef.current) {
       return;
     }
-    const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
     const response = await fetch(apiUrl + "/songs/" + queue[0].id, {
       headers: { 'X-Queue-Secret': secret },
       method: 'DELETE',
@@ -101,18 +101,6 @@ const YouTubePlayer = ({ queue, setQueue, secret }) => {
       style={{ width: "100%", aspectRatio: "16 / 9" }}
     />
     <AnimatePresence mode="wait">
-      {!started && <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem" }}>
-        <Button
-          fontSize={"2rem"}
-          padding={"1rem"}
-          height={"unset"}
-          onClick={startKaraoke}
-        >
-          Start Karaoke
-        </Button>
-      </motion.div>}
-    </AnimatePresence>
-    <AnimatePresence mode="wait">
       {started && <motion.div style={{ justifyContent: "right", display: 'flex', marginTop: "1rem" }}>
         <Button
           fontSize={"2rem"}
@@ -124,6 +112,17 @@ const YouTubePlayer = ({ queue, setQueue, secret }) => {
           Next Song
         </Button>
       </motion.div>}
+      <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem" }}>
+        <Button
+          fontSize={"2rem"}
+          padding={"1rem"}
+          height={"unset"}
+          onClick={startKaraoke}
+          disabled={started}
+        >
+          Start Karaoke
+        </Button>
+      </motion.div>
     </AnimatePresence>
     {error !== "" && <div style={{ color: "red" }}>
       Service Unavailable: {error}

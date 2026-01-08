@@ -1,14 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import YouTubePlayer from "../../components/Custom/YoutubePlayer";
 import { getYouTubeTitle, isLocalhost } from "@/util";
 import { useQueueSocket } from "@/components/Custom/useQueueSocket";
 import { v4 as uuidv4 } from 'uuid';
+import { AnimatePresence, motion } from "motion/react";
 import {
   Dialog,
   Portal,
   Input,
   Button
-} from '@chakra-ui/react'
+} from '@chakra-ui/react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import SortableItem from "@/components/Custom/SortableItem";
 
 const fetchQueue = async (secret) => {
   const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
@@ -20,6 +36,25 @@ const fetchQueue = async (secret) => {
   }
   return response.json();
 };
+
+const fetchAdmin = async (secret, clientId, setAdminActive, setIsAdmin) => {
+  const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
+  if (!!clientId) {
+    const response = await fetch(`${apiUrl}/admin/` + clientId, {
+      headers: { 'X-Queue-Secret': secret },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch admin');
+    }
+    const data = await response.json();
+    if (data.adminExists) {
+      setAdminActive(true);
+    }
+    if (data.isAdmin) {
+      setIsAdmin(true);
+    }
+  }
+}
 
 const sendAddRequest = async (apiUrl, secret, newLink, title) => {
   const response = await fetch(`${apiUrl}/songs`, {
@@ -39,6 +74,32 @@ const sendAddRequest = async (apiUrl, secret, newLink, title) => {
   }
 }
 
+const TakeAdminButton = ({ apiUrl, clientId, isAdmin, secret }) => {
+  return <Button
+    fontSize={"2rem"}
+    padding={"1rem"}
+    height={"unset"}
+    onClick={async () => {
+      const response = await fetch(apiUrl + "/admin/create", {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Queue-Secret': secret
+        },
+        method: 'POST',
+        body: JSON.stringify({
+          id: clientId,
+        })
+      });
+      if (!response.ok) {
+        setError(response.status)
+      }
+    }}
+    disabled={isAdmin}
+  >
+    Take Admin Role
+  </Button>
+}
+
 const Karaoke = () => {
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +107,9 @@ const Karaoke = () => {
   const [newLink, setNewLink] = useState("");
   const [manualTitle, setManualTitle] = useState("");
   const [showManualTitleModal, setShowManualTitleModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminActive, setAdminActive] = useState(false);
+  const [clientId, setClientId] = useState(localStorage.getItem("clientId"));
   const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
   const secret = window.location.pathname
     .split("/")
@@ -78,15 +142,48 @@ const Karaoke = () => {
       setQueue(queueCopy);
     }, () => {
       setQueue([]);
+    }, (newId) => {
+      if (newId === null) {
+        setIsAdmin(false);
+        setAdminActive(false);
+      } else if (newId === clientId) {
+        setIsAdmin(true);
+        setAdminActive(true);
+      } else {
+        setIsAdmin(false);
+        setAdminActive(true);
+      }
+    }, (currentIndex, newIndex) => {
+      let queueCopy = queue.slice();
+      const temp = queueCopy[currentIndex];
+      queueCopy.splice(currentIndex, 1);
+      queueCopy.splice(newIndex, 0, temp);
+      setQueue(queueCopy);
     }
   );
+
+  useEffect(() => {
+    if (!clientId) {
+      const newId = uuidv4();
+      setClientId(newId);
+      localStorage.setItem("clientId", newId);
+    }
+  }, []);
 
   useEffect(() => {
     fetchQueue(secret)
       .then(data => setQueue(data))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
+    fetchAdmin(secret, clientId, setAdminActive, setIsAdmin);
   }, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   if (loading) {
     return <p>Loading...</p>;
@@ -94,7 +191,34 @@ const Karaoke = () => {
   if (error) {
     return <p>Error: {error}</p>;
   }
-  return <div style={{ display: "flex", justifyContent: "space-betwen", padding: "2rem", gap: "2rem" }}>
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const currentIndex = queue.findIndex((song) => {
+        return song.id === active.id
+      });
+      const newIndex = queue.findIndex((song) => {
+        return song.id === over.id
+      });
+      const response = await fetch(apiUrl + "/songs", {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Queue-Secret': secret
+        },
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentIndex,
+          newIndex
+        })
+      });
+      if (!response.ok) {
+        setError("Failed to reorder songs")
+      }
+    }
+  }
+
+  return <div style={{ display: "flex", justifyContent: isAdmin ? "space-betwen" : "center", padding: "2rem", gap: "2rem" }}>
     <Dialog.Root
       role="alertdialog"
       motionPreset="slide-in-bottom"
@@ -147,17 +271,49 @@ const Karaoke = () => {
         </Dialog.Positioner>
       </Portal>
     </Dialog.Root>
-    <div style={{ width: "80%" }}>
-      <YouTubePlayer queue={queue} setQueue={setQueue} secret={secret} />
-    </div>
-    <div style={{ width: "20%", display: "flex", flexDirection: "column", gap: ".5rem" }}>
+    {isAdmin && <div style={{ width: "80%" }}>
+      {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} />}
+      <AnimatePresence mode="wait">
+        <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem", gap: "1.5rem" }}>
+          {false && <Button
+            fontSize={"2rem"}
+            padding={"1rem"}
+            height={"unset"}
+            onClick={async () => {
+              const response = await fetch(apiUrl + "/admin", {
+                headers: { 'X-Queue-Secret': secret },
+                method: 'DELETE',
+              });
+              if (!response.ok) {
+                setError(response.status)
+              }
+            }}
+          >
+            Clear Admin
+          </Button>}
+        </motion.div>
+      </AnimatePresence>
+    </div>}
+    <div style={{ width: isAdmin ? "20%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem" }}>
       <h2 style={{ fontSize: "2rem" }}>Queue</h2>
-      {queue.map((song) => {
-        console.log(song)
-        return <div key={song.id}>
-          {song.title}
-        </div>
-      })}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={queue.map((song) => song.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {queue.map(song => {
+            return <SortableItem
+              key={song.id}
+              id={song.id}
+              title={song.title}
+            />
+          })}
+        </SortableContext>
+      </DndContext>
       <div style={{ display: "flex" }}>
         <Input
           size="md"
@@ -191,6 +347,14 @@ const Karaoke = () => {
           <strong>+</strong>
         </Button>
       </div>
+      {!isAdmin && <div style={{ marginTop: "1rem" }}>
+        <TakeAdminButton
+          apiUrl={apiUrl}
+          clientId={clientId}
+          isAdmin={isAdmin}
+          secret={secret}
+        />
+      </div>}
     </div>
   </div>
 };

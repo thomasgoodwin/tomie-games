@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { getSocket } from "./Socket";
 
-export function useQueueSocket(secret, onSongAdded, onSongRemoved, onAllSongsRemoved) {
+export const useQueueSocket = (secret, onSongAdded, onSongRemoved, onAllSongsRemoved, onAdminChanged, onQueueReordered) => {
   useEffect(() => {
     if (!secret) {
       return
@@ -16,6 +16,10 @@ export function useQueueSocket(secret, onSongAdded, onSongRemoved, onAllSongsRem
         onSongRemoved(payload.id);
       } else if (payload.type === "all-songs-removed") {
         onAllSongsRemoved();
+      } else if (payload.type === "admin-changed") {
+        onAdminChanged(payload.newId);
+      } else if (payload.type === "queue-reordered") {
+        onQueueReordered(payload.currentIndex, payload.newIndex);
       }
     };
     socket.on("queue:updated", handler);
