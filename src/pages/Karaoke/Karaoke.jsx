@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import YouTubePlayer from "../../components/Custom/YoutubePlayer";
-import { getYouTubeTitle, isLocalhost } from "@/util";
+import { getYouTubeTitle, isLocalhost, isValidUrl } from "@/util";
 import { useQueueSocket } from "@/components/Custom/useQueueSocket";
 import { v4 as uuidv4 } from 'uuid';
 import { AnimatePresence, motion } from "motion/react";
@@ -25,6 +25,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import SortableItem from "@/components/Custom/SortableItem";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+
 
 const fetchQueue = async (secret) => {
   const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
@@ -185,6 +187,10 @@ const Karaoke = () => {
     })
   );
 
+  const urlValid = useMemo(() => {
+    return isValidUrl(newLink);
+  }, [newLink])
+
   if (loading) {
     return <p>Loading...</p>;
   }
@@ -300,6 +306,7 @@ const Karaoke = () => {
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
+        modifiers={[restrictToVerticalAxis]}
       >
         <SortableContext
           items={queue.map((song) => song.id)}
@@ -310,6 +317,8 @@ const Karaoke = () => {
               key={song.id}
               id={song.id}
               title={song.title}
+              apiUrl={apiUrl}
+              secret={secret}
             />
           })}
         </SortableContext>
@@ -340,6 +349,7 @@ const Karaoke = () => {
           height="50px"
           paddingInline={"0px"}
           padding="1rem"
+          disabled={!urlValid}
           onClick={() => {
             addSongToDB(newLink);
           }}

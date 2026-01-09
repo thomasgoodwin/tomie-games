@@ -1,12 +1,17 @@
 import { ClientOnly, IconButton, Skeleton, Span } from '@chakra-ui/react'
 import { ThemeProvider, useTheme } from 'next-themes'
-
+import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import * as React from 'react'
 import { LuMoon, LuSun } from 'react-icons/lu'
 
 export function ColorModeProvider(props) {
+  const { children, ...rest } = props
   return (
-    <ThemeProvider attribute='class' disableTransitionOnChange defaultTheme="dark" {...props} />
+    <ThemeProvider attribute="class" defaultTheme="dark" {...rest}>
+      <ChakraProvider value={defaultSystem}>
+        {children}
+      </ChakraProvider>
+    </ThemeProvider>
   )
 }
 
@@ -62,12 +67,9 @@ export const ColorModeButton = React.forwardRef(
 export const LightMode = React.forwardRef(function LightMode(props, ref) {
   return (
     <Span
-      color='fg'
-      display='contents'
-      className='chakra-theme light'
-      colorPalette='gray'
-      colorScheme='light'
       ref={ref}
+      display="contents"
+      colorPalette="gray"
       {...props}
     />
   )
@@ -76,12 +78,9 @@ export const LightMode = React.forwardRef(function LightMode(props, ref) {
 export const DarkMode = React.forwardRef(function DarkMode(props, ref) {
   return (
     <Span
-      color='fg'
-      display='contents'
-      className='chakra-theme dark'
-      colorPalette='gray'
-      colorScheme='dark'
       ref={ref}
+      display="contents"
+      colorPalette="gray"
       {...props}
     />
   )
