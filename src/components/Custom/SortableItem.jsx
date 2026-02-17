@@ -15,10 +15,12 @@ const SortableItem = (props) => {
   } = useSortable({ id: props.id });
 
   const style = {
-    margin: ".5rem 0px",
-    padding: ".5rem .25rem .5rem .25rem",
-    border: "1px solid #D3D3D3",
-    borderRadius: '4px',
+    margin: ".35rem 0px",
+    padding: ".6rem .5rem .6rem .25rem",
+    border: "1px solid rgba(6, 182, 212, 0.3)",
+    borderLeft: "3px solid #06B6D4",
+    borderRadius: '6px',
+    background: "rgba(6, 182, 212, 0.06)",
     display: "flex",
     alignItems: "center",
     gap: ".5rem",
@@ -36,7 +38,7 @@ const SortableItem = (props) => {
       {...attributes}
 
     >
-      <GoGrabber style={{ flexShrink: 0 }} size={30} {...listeners} cursor={"pointer"} />
+      <GoGrabber style={{ flexShrink: 0, color: "#06B6D4" }} size={30} {...listeners} cursor={"pointer"} />
       <span
         style={{
           flex: 1,
@@ -54,6 +56,10 @@ const SortableItem = (props) => {
         colorPalette="red"
         size="xs"
         onClick={async () => {
+          if (props.demoMode) {
+            props.onDelete(props.id);
+            return;
+          }
           console.log('test', props.apiUrl + "/songs/" + props.id)
           const response = await fetch(props.apiUrl + "/songs/" + props.id, {
             method: "DELETE",

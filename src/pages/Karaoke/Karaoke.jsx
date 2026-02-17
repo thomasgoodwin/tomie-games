@@ -78,9 +78,13 @@ const sendAddRequest = async (apiUrl, secret, newLink, title) => {
 
 const TakeAdminButton = ({ apiUrl, clientId, isAdmin, secret }) => {
   return <Button
-    fontSize={"2rem"}
-    padding={"1rem"}
+    fontSize={"1.25rem"}
+    padding={"0.75rem 1.5rem"}
     height={"unset"}
+    background={"#06B6D4"}
+    color={"white"}
+    _hover={{ background: "#0891B2" }}
+    borderRadius={"8px"}
     onClick={async () => {
       const response = await fetch(apiUrl + "/admin/create", {
         headers: {
@@ -106,6 +110,7 @@ const Karaoke = () => {
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [demoMode, setDemoMode] = useState(false);
   const [newLink, setNewLink] = useState("");
   const [manualTitle, setManualTitle] = useState("");
   const [showManualTitleModal, setShowManualTitleModal] = useState(false);
@@ -118,18 +123,26 @@ const Karaoke = () => {
     .filter(Boolean)
     .pop();
 
+  const deleteSongLocal = (id) => {
+    setQueue((prev) => prev.filter((song) => song.id !== id));
+  };
+
   const addSongToDB = async (newLink) => {
     const title = await getYouTubeTitle(newLink);
     if (title === undefined) {
       setShowManualTitleModal(true);
     } else {
-      sendAddRequest(apiUrl, secret, newLink, title);
+      if (demoMode) {
+        setQueue((prev) => [...prev, { id: uuidv4(), url: newLink, title }]);
+      } else {
+        sendAddRequest(apiUrl, secret, newLink, title);
+      }
       setNewLink("");
     }
   }
 
   useQueueSocket(
-    secret,
+    demoMode ? null : secret,
     (song) => {
       setQueue((prev) => [...prev, song]);
     }, (id) => {
@@ -175,9 +188,13 @@ const Karaoke = () => {
   useEffect(() => {
     fetchQueue(secret)
       .then(data => setQueue(data))
-      .catch(err => setError(err.message))
+      .catch(() => {
+        setDemoMode(true);
+        setIsAdmin(true);
+        setAdminActive(true);
+      })
       .finally(() => setLoading(false));
-    fetchAdmin(secret, clientId, setAdminActive, setIsAdmin);
+    fetchAdmin(secret, clientId, setAdminActive, setIsAdmin).catch(() => {});
   }, []);
 
   const sensors = useSensors(
@@ -194,7 +211,7 @@ const Karaoke = () => {
   if (loading) {
     return <p>Loading...</p>;
   }
-  if (error) {
+  if (error && !demoMode) {
     return <p>Error: {error}</p>;
   }
 
@@ -207,24 +224,42 @@ const Karaoke = () => {
       const newIndex = queue.findIndex((song) => {
         return song.id === over.id
       });
-      const response = await fetch(apiUrl + "/songs", {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Queue-Secret': secret
-        },
-        method: 'PATCH',
-        body: JSON.stringify({
-          currentIndex,
-          newIndex
-        })
-      });
-      if (!response.ok) {
-        setError("Failed to reorder songs")
+      if (demoMode) {
+        setQueue((prev) => arrayMove(prev, currentIndex, newIndex));
+      } else {
+        const response = await fetch(apiUrl + "/songs", {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Queue-Secret': secret
+          },
+          method: 'PATCH',
+          body: JSON.stringify({
+            currentIndex,
+            newIndex
+          })
+        });
+        if (!response.ok) {
+          setError("Failed to reorder songs")
+        }
       }
     }
   }
 
-  return <div style={{ display: "flex", justifyContent: isAdmin ? "space-betwen" : "center", padding: "2rem", gap: "2rem" }}>
+  return <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "0 2rem 2rem 2rem", gap: "1.5rem" }}>
+    {demoMode && <div style={{
+      background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
+      color: "#fff",
+      padding: ".6rem 1.5rem",
+      borderRadius: "8px",
+      fontWeight: "600",
+      width: "100%",
+      textAlign: "center",
+      fontSize: "1rem",
+      letterSpacing: ".5px",
+    }}>
+      Demo Mode — changes are local only
+    </div>}
+    <div style={{ display: "flex", justifyContent: isAdmin ? "space-between" : "center", width: "100%", gap: "2rem" }}>
     <Dialog.Root
       role="alertdialog"
       motionPreset="slide-in-bottom"
@@ -265,20 +300,25 @@ const Karaoke = () => {
                 variant='ghost'
                 onClick={async () => {
                   setShowManualTitleModal(false);
+                  if (demoMode) {
+                    setQueue((prev) => [...prev, { id: uuidv4(), url: newLink, title: manualTitle }]);
+                  } else {
+                    await sendAddRequest(apiUrl, secret, newLink, manualTitle);
+                  }
                   setManualTitle("");
                   setNewLink("");
-                  await sendAddRequest(apiUrl, secret, newLink, manualTitle);
                 }}
               >
                 Confirm
               </Button>
             </Dialog.Footer>
+
           </Dialog.Content>
         </Dialog.Positioner>
       </Portal>
     </Dialog.Root>
     {isAdmin && <div style={{ width: "80%" }}>
-      {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} />}
+      {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} demoMode={demoMode} onNextSong={() => deleteSongLocal(queue[0]?.id)} />}
       <AnimatePresence mode="wait">
         <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem", gap: "1.5rem" }}>
           {false && <Button
@@ -301,7 +341,14 @@ const Karaoke = () => {
       </AnimatePresence>
     </div>}
     <div style={{ width: isAdmin ? "20%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem" }}>
-      <h2 style={{ fontSize: "2rem" }}>Queue</h2>
+      <h2 style={{
+        fontSize: "2rem",
+        fontWeight: "700",
+        background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        marginBottom: ".25rem",
+      }}>Queue</h2>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -319,6 +366,8 @@ const Karaoke = () => {
               title={song.title}
               apiUrl={apiUrl}
               secret={secret}
+              demoMode={demoMode}
+              onDelete={deleteSongLocal}
             />
           })}
         </SortableContext>
@@ -327,11 +376,13 @@ const Karaoke = () => {
         <Input
           size="md"
           value={newLink}
-          placeholder="YouTube Link..."
+          placeholder="Paste a YouTube link..."
           variant="subtle"
-          backgroundColor={"white"}
+          backgroundColor={"rgba(255,255,255,0.95)"}
           borderTopRightRadius={"0px"}
           borderBottomRightRadius={"0px"}
+          borderTopLeftRadius={"8px"}
+          borderBottomLeftRadius={"8px"}
           height="50px"
           color="black"
           onChange={(e) => {
@@ -345,16 +396,21 @@ const Karaoke = () => {
           display={"flex"}
           alignItems={"center"}
           justifyContent={"center"}
-          fontSize={"2rem"}
+          fontSize={"1.5rem"}
+          lineHeight={"1"}
           height="50px"
-          paddingInline={"0px"}
-          padding="1rem"
+          width="50px"
+          minWidth="50px"
+          padding={"0"}
+          background={"#06B6D4"}
+          color={"white"}
+          _hover={{ background: "#0891B2" }}
           disabled={!urlValid}
           onClick={() => {
             addSongToDB(newLink);
           }}
         >
-          <strong>+</strong>
+          +
         </Button>
       </div>
       {!isAdmin && <div style={{ marginTop: "1rem" }}>
@@ -365,6 +421,7 @@ const Karaoke = () => {
           secret={secret}
         />
       </div>}
+    </div>
     </div>
   </div>
 };

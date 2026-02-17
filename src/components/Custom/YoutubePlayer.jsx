@@ -28,7 +28,7 @@ const loadYouTubeAPI = () => {
   });
 }
 
-const YouTubePlayer = ({ queue, secret, adminActive, isAdmin }) => {
+const YouTubePlayer = ({ queue, secret, adminActive, isAdmin, demoMode, onNextSong }) => {
   const playerRef = useRef(null);
   const containerRef = useRef(null);
   const [started, setStarted] = useState(false);
@@ -84,12 +84,16 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin }) => {
     if (!playerRef.current) {
       return;
     }
-    const response = await fetch(apiUrl + "/songs/" + queue[0].id, {
-      headers: { 'X-Queue-Secret': secret },
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      setError(response.status)
+    if (demoMode) {
+      onNextSong();
+    } else {
+      const response = await fetch(apiUrl + "/songs/" + queue[0].id, {
+        headers: { 'X-Queue-Secret': secret },
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        setError(response.status)
+      }
     }
     const nextIndex = 1;
     playerRef.current.loadVideoById(getYouTubeVideoID(queue[nextIndex].url));
@@ -98,14 +102,18 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin }) => {
   return <div style={{ width: "100%", position: "relative" }}>
     <div
       ref={containerRef}
-      style={{ width: "100%", aspectRatio: "16 / 9" }}
+      style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: "8px", overflow: "hidden", border: "2px solid rgba(6, 182, 212, 0.3)" }}
     />
     <AnimatePresence mode="wait">
       {started && <motion.div style={{ justifyContent: "right", display: 'flex', marginTop: "1rem" }}>
         <Button
-          fontSize={"2rem"}
-          padding={"1rem"}
+          fontSize={"1.25rem"}
+          padding={"0.75rem 1.5rem"}
           height={"unset"}
+          background={"#06B6D4"}
+          color={"white"}
+          _hover={{ background: "#0891B2" }}
+          borderRadius={"8px"}
           onClick={nextSong}
           disabled={queue.length < 2}
         >
@@ -114,9 +122,13 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin }) => {
       </motion.div>}
       <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem" }}>
         <Button
-          fontSize={"2rem"}
-          padding={"1rem"}
+          fontSize={"1.25rem"}
+          padding={"0.75rem 1.5rem"}
           height={"unset"}
+          background={"#06B6D4"}
+          color={"white"}
+          _hover={{ background: "#0891B2" }}
+          borderRadius={"8px"}
           onClick={startKaraoke}
           disabled={started}
         >
