@@ -26,6 +26,14 @@ db.prepare(`
 `).run();
 
 db.prepare(`
+  CREATE TABLE IF NOT EXISTS boards (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    data TEXT NOT NULL
+  )
+`).run();
+
+db.prepare(`
   CREATE TABLE IF NOT EXISTS admins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token_hash TEXT NOT NULL UNIQUE
@@ -232,6 +240,30 @@ app.delete('/songs', requireSecret, (req, res) => {
     console.error(e);
     res.status(500).send('Internal Error');
   }
+});
+
+// Boards (no secret required — public game content)
+app.get('/boards', (req, res) => {
+  const boards = db.prepare('SELECT id, name FROM boards ORDER BY rowid DESC').all();
+  res.json(boards);
+});
+
+app.get('/boards/:id', (req, res) => {
+  const board = db.prepare('SELECT * FROM boards WHERE id = ?').get(req.params.id);
+  if (!board) return res.status(404).send('Not found');
+  res.json({ ...board, data: JSON.parse(board.data) });
+});
+
+app.post('/boards', (req, res) => {
+  const { id, name, data } = req.body;
+  if (!id || !name || !data) return res.status(400).send('Bad parameters');
+  db.prepare('INSERT OR REPLACE INTO boards (id, name, data) VALUES (?, ?, ?)').run(id, name, JSON.stringify(data));
+  res.json({ id, name });
+});
+
+app.delete('/boards/:id', (req, res) => {
+  db.prepare('DELETE FROM boards WHERE id = ?').run(req.params.id);
+  res.send('Deleted');
 });
 
 server.listen(port, () => {
