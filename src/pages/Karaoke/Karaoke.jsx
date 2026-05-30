@@ -197,7 +197,7 @@ const Karaoke = () => {
         setAdminActive(true);
       })
       .finally(() => setLoading(false));
-    fetchAdmin(secret, clientId, setAdminActive, setIsAdmin).catch(() => {});
+    fetchAdmin(secret, clientId, setAdminActive, setIsAdmin).catch(() => { });
   }, []);
 
   const sensors = useSensors(
@@ -210,6 +210,16 @@ const Karaoke = () => {
   const urlValid = useMemo(() => {
     return isValidUrl(newLink);
   }, [newLink])
+
+  const isMobile = navigator.userAgentData?.mobile;
+  useEffect(() => {
+    if (isMobile) {
+      document.getElementById("root").style.padding = "0";
+    }
+    return () => {
+      document.getElementById("root").style.padding = "";
+    };
+  }, [isMobile]);
 
   if (loading) {
     return <p>Loading...</p>;
@@ -247,8 +257,7 @@ const Karaoke = () => {
       }
     }
   }
-
-  return <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "0 2rem 2rem 2rem", gap: "1.5rem" }}>
+  return <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: isMobile ? "0" : "0 2rem 2rem 2rem", gap: "1.5rem" }}>
     {demoMode && <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: ".75rem" }}>
       <div style={{
         background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
@@ -296,168 +305,168 @@ const Karaoke = () => {
       </div>
     </div>}
     <div style={{ display: "flex", justifyContent: isAdmin ? "space-between" : "center", width: "100%", gap: "2rem" }}>
-    <Dialog.Root
-      role="alertdialog"
-      motionPreset="slide-in-bottom"
-      lazyMount
-      open={showManualTitleModal}
-      onOpenChange={(e) => setShowManualTitleModal(e.open)}
-    >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content>
-            <Dialog.Header>
-              <Dialog.Title>Set a Title Manually</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <p>
-                This song is blocked by the karaoke site but can still be played on youtube.
-              </p>
-              <p>
-                Please input a name manually so we know which song it is on the queue.
-              </p>
-              <Input
-                size="md"
-                value={manualTitle}
-                placeholder="Title..."
-                variant="subtle"
-                backgroundColor={"white"}
-                height="50px"
-                color="black"
-                onChange={(e) => {
-                  setManualTitle(e.target.value)
-                }}
-              />
-            </Dialog.Body>
-            <Dialog.Footer>
-              <Button
-                disabled={manualTitle.length < 3}
-                variant='ghost'
-                onClick={async () => {
-                  setShowManualTitleModal(false);
-                  if (demoMode) {
-                    setQueue((prev) => [...prev, { id: uuidv4(), url: newLink, title: manualTitle }]);
-                  } else {
-                    await sendAddRequest(apiUrl, secret, newLink, manualTitle);
-                  }
-                  setManualTitle("");
-                  setNewLink("");
-                }}
-              >
-                Confirm
-              </Button>
-            </Dialog.Footer>
+      <Dialog.Root
+        role="alertdialog"
+        motionPreset="slide-in-bottom"
+        lazyMount
+        open={showManualTitleModal}
+        onOpenChange={(e) => setShowManualTitleModal(e.open)}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header>
+                <Dialog.Title>Set a Title Manually</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <p>
+                  This song is blocked by the karaoke site but can still be played on youtube.
+                </p>
+                <p>
+                  Please input a name manually so we know which song it is on the queue.
+                </p>
+                <Input
+                  size="md"
+                  value={manualTitle}
+                  placeholder="Title..."
+                  variant="subtle"
+                  backgroundColor={"white"}
+                  height="50px"
+                  color="black"
+                  onChange={(e) => {
+                    setManualTitle(e.target.value)
+                  }}
+                />
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Button
+                  disabled={manualTitle.length < 3}
+                  variant='ghost'
+                  onClick={async () => {
+                    setShowManualTitleModal(false);
+                    if (demoMode) {
+                      setQueue((prev) => [...prev, { id: uuidv4(), url: newLink, title: manualTitle }]);
+                    } else {
+                      await sendAddRequest(apiUrl, secret, newLink, manualTitle);
+                    }
+                    setManualTitle("");
+                    setNewLink("");
+                  }}
+                >
+                  Confirm
+                </Button>
+              </Dialog.Footer>
 
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
-    {isAdmin && <div style={{ width: "80%" }}>
-      {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} demoMode={demoMode} onNextSong={() => deleteSongLocal(queue[0]?.id)} />}
-      <AnimatePresence mode="wait">
-        <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem", gap: "1.5rem" }}>
-          {false && <Button
-            fontSize={"2rem"}
-            padding={"1rem"}
-            height={"unset"}
-            onClick={async () => {
-              const response = await fetch(apiUrl + "/admin", {
-                headers: { 'X-Queue-Secret': secret },
-                method: 'DELETE',
-              });
-              if (!response.ok) {
-                setError(response.status)
-              }
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+      {isAdmin && <div style={{ width: "80%" }}>
+        {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} demoMode={demoMode} onNextSong={() => deleteSongLocal(queue[0]?.id)} />}
+        <AnimatePresence mode="wait">
+          <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem", gap: "1.5rem" }}>
+            {false && <Button
+              fontSize={"2rem"}
+              padding={"1rem"}
+              height={"unset"}
+              onClick={async () => {
+                const response = await fetch(apiUrl + "/admin", {
+                  headers: { 'X-Queue-Secret': secret },
+                  method: 'DELETE',
+                });
+                if (!response.ok) {
+                  setError(response.status)
+                }
+              }}
+            >
+              Clear Admin
+            </Button>}
+          </motion.div>
+        </AnimatePresence>
+      </div>}
+      <div style={{ width: isAdmin ? "20%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem" }}>
+        <h2 style={{
+          fontSize: "2rem",
+          fontWeight: "700",
+          background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          marginBottom: ".25rem",
+        }}>Queue</h2>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis]}
+        >
+          <SortableContext
+            items={queue.map((song) => song.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {queue.map(song => {
+              return <SortableItem
+                key={song.id}
+                id={song.id}
+                title={song.title}
+                apiUrl={apiUrl}
+                secret={secret}
+                demoMode={demoMode}
+                onDelete={deleteSongLocal}
+              />
+            })}
+          </SortableContext>
+        </DndContext>
+        <div style={{ display: "flex" }}>
+          <Input
+            size="md"
+            value={newLink}
+            placeholder="Paste a YouTube link..."
+            variant="subtle"
+            backgroundColor={"rgba(255,255,255,0.95)"}
+            borderTopRightRadius={"0px"}
+            borderBottomRightRadius={"0px"}
+            borderTopLeftRadius={"8px"}
+            borderBottomLeftRadius={"8px"}
+            height="50px"
+            color="black"
+            onChange={(e) => {
+              setNewLink(e.target.value)
+            }}
+          />
+          <Button
+            size="md"
+            borderTopLeftRadius={"0px"}
+            borderBottomLeftRadius={"0px"}
+            display={"flex"}
+            alignItems={"center"}
+            justifyContent={"center"}
+            fontSize={"1.5rem"}
+            lineHeight={"1"}
+            height="50px"
+            width="50px"
+            minWidth="50px"
+            padding={"0"}
+            background={"#06B6D4"}
+            color={"white"}
+            _hover={{ background: "#0891B2" }}
+            disabled={!urlValid}
+            onClick={() => {
+              addSongToDB(newLink);
             }}
           >
-            Clear Admin
-          </Button>}
-        </motion.div>
-      </AnimatePresence>
-    </div>}
-    <div style={{ width: isAdmin ? "20%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem" }}>
-      <h2 style={{
-        fontSize: "2rem",
-        fontWeight: "700",
-        background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        marginBottom: ".25rem",
-      }}>Queue</h2>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-        modifiers={[restrictToVerticalAxis]}
-      >
-        <SortableContext
-          items={queue.map((song) => song.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {queue.map(song => {
-            return <SortableItem
-              key={song.id}
-              id={song.id}
-              title={song.title}
-              apiUrl={apiUrl}
-              secret={secret}
-              demoMode={demoMode}
-              onDelete={deleteSongLocal}
-            />
-          })}
-        </SortableContext>
-      </DndContext>
-      <div style={{ display: "flex" }}>
-        <Input
-          size="md"
-          value={newLink}
-          placeholder="Paste a YouTube link..."
-          variant="subtle"
-          backgroundColor={"rgba(255,255,255,0.95)"}
-          borderTopRightRadius={"0px"}
-          borderBottomRightRadius={"0px"}
-          borderTopLeftRadius={"8px"}
-          borderBottomLeftRadius={"8px"}
-          height="50px"
-          color="black"
-          onChange={(e) => {
-            setNewLink(e.target.value)
-          }}
-        />
-        <Button
-          size="md"
-          borderTopLeftRadius={"0px"}
-          borderBottomLeftRadius={"0px"}
-          display={"flex"}
-          alignItems={"center"}
-          justifyContent={"center"}
-          fontSize={"1.5rem"}
-          lineHeight={"1"}
-          height="50px"
-          width="50px"
-          minWidth="50px"
-          padding={"0"}
-          background={"#06B6D4"}
-          color={"white"}
-          _hover={{ background: "#0891B2" }}
-          disabled={!urlValid}
-          onClick={() => {
-            addSongToDB(newLink);
-          }}
-        >
-          +
-        </Button>
+            +
+          </Button>
+        </div>
+        {!isAdmin && !isMobile && <div style={{ marginTop: "1rem" }}>
+          <TakeAdminButton
+            apiUrl={apiUrl}
+            clientId={clientId}
+            isAdmin={isAdmin}
+            secret={secret}
+          />
+        </div>}
       </div>
-      {!isAdmin && <div style={{ marginTop: "1rem" }}>
-        <TakeAdminButton
-          apiUrl={apiUrl}
-          clientId={clientId}
-          isAdmin={isAdmin}
-          secret={secret}
-        />
-      </div>}
-    </div>
     </div>
   </div>
 };

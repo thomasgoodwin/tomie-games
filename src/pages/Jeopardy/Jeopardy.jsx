@@ -1,528 +1,431 @@
-import { useState } from "react";
-import { Button, Input, Group, Grid, GridItem, Blockquote, Flex } from "@chakra-ui/react";
+import { useState, useEffect } from "react";
+import { Button, Input, Group, Grid, GridItem } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "motion/react";
+import { v4 as uuidv4 } from 'uuid';
 import QuestionCard from "../../components/Custom/QuestionCard";
 import PlayerList from "../../components/Custom/PlayerList";
-import GECS from "../../assets/audio/757.mp3";
-import Arcane from "../../assets/audio/arcane.mp3";
-import HampsterDance from "../../assets/audio/HampsterDance.mp3";
-import roses from "../../assets/audio/roses.mp3";
-
-import NickTanHouse from "../../assets/name-the-place/nickTanHouse.png";
-import SouthHillMall from "../../assets/name-the-place/southHillMall.jpg";
-import GriffithObservatory from "../../assets/name-the-place/griffithObservatory.png";
-import TerranceHouse from "../../assets/name-the-place/terranceHosue.png";
-
-import Metapod from "../../assets/pokemon/metapod100.png";
-import Electrike from "../../assets/pokemon/electrec200.png";
-import Dunsparse from "../../assets/pokemon/dunsparse300.png";
-import Abomasnow from "../../assets/pokemon/obamasnow400.png";
-
-import PennyFarthing from "../../assets/nostalgia-bait/Man-on-a-huge-high-wheel-bikes.jpg";
-import Spam from "../../assets/nostalgia-bait/spam.png";
-import BabeRuth from "../../assets/nostalgia-bait/BabeRuth.jpg";
-
-import ShieldGuy from "../../assets/anime/Naofumi_Iwatani.webp";
-
-import Shaihulud from "../../assets/audio/shai-hulud.mp3";
-
-import Georgia from "../../assets/nations/ge.svg";
-import Russia from "../../assets/nations/ru.svg";
-import Turkey from "../../assets/nations/tr.svg";
-
-import { wordToHex } from "../../util";
+import { isLocalhost, wordToHex } from "../../util";
 import '../../App.css';
 
-const allColorsPicked = (playerList) => {
-  let allColors = true;
-  Object.keys(playerList).forEach((playerId) => {
-    if (playerList[playerId].color === undefined) {
-      allColors = false;
-    }
-  });
-  return allColors;
-}
+const POINT_VALUES = [100, 200, 300, 400];
 
-const questions = {
-  "name-the-song-0": {
-    "category": "Name the Song",
-    "question": <div>
-      <audio controls>
-        <source src={Arcane} type="audio/mpeg" />
-        Your browser does not support the audio element.
-      </audio>
-    </div>,
-    "value": 100,
-    "answer": "Enemy",
-    "active": true
-  },
-  "name-the-place-0": {
-    "category": "Name the Place",
-    "question": <img
-      src={NickTanHouse}
-      alt=""
-    />,
-    "answer": "Nick Tan's House",
-    "value": 100,
-    "active": true
-  },
-  "who-that-pokemon-0": {
-    "category": "Who's that Pokemon?",
-    "question": <div className="who-that">
-      <img
-        src={Metapod}
-        alt=""
-      />
-    </div>,
-    "answer": "Metapod",
-    "value": 100,
-    "active": true
-  },
-  "stocks-0": {
-    "category": "Stocks",
-    "question": "Which livestock animal usually has a beard on the chin, in both wild and domestic species?",
-    "answer": "Goats",
-    "value": 100,
-    "active": true
-  },
-  "bookworms-0": {
-    "category": "Bookworms",
-    "question": <>The name of this children's horror series features "Go Eat Worms" by the author R.L. Stine.</>,
-    "answer": "Goosebumps",
-    "value": 100,
-    "active": true
-  },
-  "nostalgia-bait-0": {
-    "category": "Nostalgia Bait",
-    "question": <>
-      <p>Name the primary ingredient in this food product.</p>
-      <img
-        src={Spam}
-        alt=""
-      />
-    </>,
-    "answer": "Ham",
-    "value": 100,
-    "active": true
-  },
-  "anime-0": {
-    "category": "Another World",
-    "question": <>In this popular isekai that released in 2012, if you died in the game, you died in real life.</>,
-    "answer": "Sword Art Online",
-    "value": 100,
-    "active": true
-  },
-  "name-the-song-1": {
-    "category": "Name the Song",
-    "question": <div>
-      <audio controls>
-        <source src={GECS} type="audio/mpeg" />
-        Your browser does not support the audio element.
-      </audio>
-    </div>,
-    "value": 200,
-    "answer": "757",
-    "active": true
-  },
-  "name-the-place-1": {
-    "category": "Name the Place",
-    "question": <img
-      src={SouthHillMall}
-      alt=""
-    />,
-    "answer": "The South Hill Mall",
-    "value": 200,
-    "active": true
-  },
-  "who-that-pokemon-1": {
-    "category": "Who's that Pokemon?",
-    "question": <div className="who-that">
-      <img
-        src={Electrike}
-        alt=""
-      />
-    </div>,
-    "answer": "Electrike",
-    "value": 200,
-    "active": true
-  },
-  "stocks-1": {
-    "category": "Stocks",
-    "question": "This informal name for the stock of a gun.",
-    "answer": "Butt",
-    "value": 200,
-    "active": true
-  },
-
-  "bookworms-1": {
-    "category": "Bookworms",
-    "question": <>would you still love me if i was a worm? </>,
-    "answer": "Yes",
-    "value": 200,
-    "active": true
-  },
-  "nostalgia-bait-1": {
-    "category": "Nostalgia Bait",
-    "question": <>The most famous BB gun in the world designed more than 80 years ago.</>,
-    "answer": "Red Ryder BB Gun",
-    "value": 200,
-    "active": true
-  },
-  "anime-1": {
-    "category": "Another World",
-    "question": <>
-      <p>
-        Name the anime:
-      </p>
-      <img
-        src={ShieldGuy}
-        alt=""
-      />
-    </>,
-    "answer": "The Rising of the Shield Hero (Shield Hero)",
-    "value": 200,
-    "active": true
-  },
-  "name-the-song-2": {
-    "category": "Name the Song",
-    "question": <div>
-      <audio controls>
-        <source src={roses} type="audio/mpeg" />
-        Your browser does not support the audio element.
-      </audio>
-    </div>,
-    "value": 300,
-    "answer": "Roses",
-    "active": true
-  },
-  "name-the-place-2": {
-    "category": "Name the Place",
-    "question": <img
-      src={GriffithObservatory}
-      alt=""
-    />,
-    "answer": "The Griffith Observatory",
-    "value": 300,
-    "active": true
-  },
-  "who-that-pokemon-2": {
-    "category": "Who's that Pokemon?",
-    "question": <div className="who-that">
-      <img
-        src={Dunsparse}
-        alt=""
-      />
-    </div>,
-    "answer": "Dunsparse",
-    "value": 300,
-    "active": true
-  },
-  "stocks-2": {
-    "category": "Stocks",
-    "question": "What are the traditional vegatables used in a french chicken stock?",
-    "answer": "Celery, Onion, and Carrots",
-    "value": 300,
-    "active": true
-  },
-  "bookworms-2": {
-    "category": "Bookworms",
-    "question": <>
-      <h3>Speak it's name</h3>
-      <audio controls>
-        <source src={Shaihulud} type="audio/mpeg" />
-        Your browser does not support the audio element.
-      </audio>
-    </>,
-    "answer": "Shai-Hulud",
-    "value": 300,
-    "active": true
-  },
-  "nostalgia-bait-2": {
-    "category": "Nostalgia Bait",
-    "question": <>
-      <div>
-        Its large front wheel provides high speeds, but became obsolete with the development of modern bicycles.
-      </div>
-      <img
-        src={PennyFarthing}
-        alt=""
-        style={{ width: "300px" }}
-      />
-    </>,
-    "answer": "Penny Farthing Machine",
-    "value": 300,
-    "active": true
-  },
-  "anime-2": {
-    "category": "Another World",
-    "question": <>A Demon Lord escapes his world and arrives in modern Tokyo, where the lack of magic in the world leads him to take on a part-time job at a fast food restaurant.</>,
-    "answer": "The Devil is a Part-Timer!",
-    "value": 300,
-    "active": true
-  },
-  "name-the-song-3": {
-    "category": "Name the Song",
-    "question": <div>
-      <audio controls>
-        <source src={HampsterDance} type="audio/mpeg" />
-        Your browser does not support the audio element.
-      </audio>
-    </div>,
-    "value": 400,
-    "answer": "The Hampster Dance Song",
-    "active": true
-  },
-  "name-the-place-3": {
-    "category": "Name the Place",
-    "question": <img
-      src={TerranceHouse}
-      alt=""
-    />,
-    "answer": "Terrance's House",
-    "value": 400,
-    "active": true
-  },
-  "who-that-pokemon-3": {
-    "category": "Who's that Pokemon?",
-    "question": <div className="who-that">
-      <img
-        src={Abomasnow}
-        alt=""
-      />
-    </div>,
-    "answer": "Abomasnow",
-    "value": 400,
-    "active": true
-  },
-  "stocks-3": {
-    "category": "Stocks",
-    "question": <>This footwear sported by ninjas is used to <i>stalk</i> their prey.</>,
-    "answer": "Tabi",
-    "value": 400,
-    "active": true
-  },
-  "bookworms-3": {
-    "category": "Bookworms",
-    "question": <>The word-forming puzzle game, Bookworm, features a worm of a certain color.</>,
-    "answer": "Green",
-    "value": 400,
-    "active": true
-  },
-  "nostalgia-bait-3": {
-    "category": "Nostalgia Bait",
-    "question": <>
-      <p>The name of the first team this popular baseball player played for.</p>
-      <img
-        src={BabeRuth}
-        alt=""
-      />
-    </>,
-    "answer": "Boston Red Sox",
-    "value": 400,
-    "active": true
-  },
-  "anime-3": {
-    "category": "Another World",
-    "question": <>What is the name of the first isekai anime?</>,
-    "answer": "Aura Battler Dunbine",
-    "value": 400,
-    "active": true
-  },
+const animation = {
+  initial: { opacity: 0, scale: 0.9 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.9 },
+  transition: { duration: 0.2 }
 };
 
-const LastQuestion = ({ gameState }) => {
-  let allAnswered = true;
-  Object.keys(gameState).forEach((questionKey) => {
-    if (gameState[questionKey].active === true) {
-      allAnswered = false;
-    }
-  });
-  const [showFinalQuestion, setShowFinalQuestion] = useState(false);
-  const [showFinalAnswer, setShowFinalAnswer] = useState(false);
+const allColorsPicked = (playerList) =>
+  Object.values(playerList).every(p => p.color !== undefined);
 
-  return <div style={{ display: "flex", justifyContent: "center" }}>
-    {allAnswered && <div style={{ width: "50%", borderRadius: "4px", border: "1px solid white", padding: "1rem", margin: "1rem" }}>
-      <h2 style={{ fontSize: "2.5rem" }}><b>Final Question</b></h2>
-      <h3 style={{ fontSize: "1.75rem" }}>Nation Silhouette</h3>
-      <div className="question">
-        <Blockquote.Root variant="solid" marginLeft={"1rem"}>
-          <Blockquote.Content>
-            {showFinalQuestion && <div>
-              <p>Name the 3 countries based on their silhouettes. For each you get correct, you get a third of your wager. You may only submit 3 countries.</p>
-              <div style={{ gap: "1rem" }}>
-                <img
-                  src={Georgia}
-                  alt=""
-                  style={{ width: "300px", filter: "invert(1)" }}
-                />
-                <img
-                  src={Russia}
-                  alt=""
-                  style={{ width: "300px", filter: "invert(1)" }}
-                />
-                <img
-                  src={Turkey}
-                  alt=""
-                  style={{ width: "300px", filter: "invert(1)" }}
-                />
-              </div>
-            </div>}
-          </Blockquote.Content>
-        </Blockquote.Root>
-        {showFinalAnswer && <p>
-          test2
-        </p>}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <Button variant="outline" size="sm" onClick={() => setShowFinalQuestion(true)}>Show Question</Button>
-        <Button variant="outline" size="sm" onClick={() => setShowFinalAnswer(true)}>Show Answer</Button>
-      </div>
-    </div>}
-  </div>;
-}
+const BoardBuilder = ({ apiUrl, initialBoard, onSave, onBack }) => {
+  const [boardName, setBoardName] = useState(initialBoard?.name || '');
+  const [categories, setCategories] = useState(
+    initialBoard?.data?.categories?.length ? initialBoard.data.categories : ['']
+  );
+  const [questions, setQuestions] = useState(initialBoard?.data?.questions || {});
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [saving, setSaving] = useState(false);
 
-function App() {
-  const [gameInfo, setGameInfo] = useState(undefined);
-  const animation = {
-    initial: { opacity: 0, scale: 0.9 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.9 },
-    transition: { duration: 0.2 }
+  const activeCat = categories[activeIdx] ?? '';
+
+  const addCategory = () => {
+    if (categories.length >= 8) return;
+    const next = [...categories, ''];
+    setCategories(next);
+    setActiveIdx(next.length - 1);
   };
 
-  const [playerList, setPlayerList] = useState({});
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [errorMessage, setErrorMessage] = useState(undefined);
-  const [gameState, setGameState] = useState(questions);
+  const removeCategory = (idx) => {
+    const cat = categories[idx];
+    const next = categories.filter((_, i) => i !== idx);
+    const nextQ = { ...questions };
+    delete nextQ[cat];
+    setCategories(next);
+    setQuestions(nextQ);
+    setActiveIdx(Math.max(0, Math.min(activeIdx, next.length - 1)));
+  };
 
-  const maxPlayers = 4;
-  let playerCount = Object.keys(playerList).length;
+  const renameCat = (idx, value) => {
+    const old = categories[idx];
+    const next = [...categories];
+    next[idx] = value;
+    setCategories(next);
+    if (old !== value && questions[old]) {
+      const nextQ = { ...questions, [value]: questions[old] };
+      delete nextQ[old];
+      setQuestions(nextQ);
+    }
+  };
 
-  return <AnimatePresence mode="wait">
-    {gameInfo === undefined ? (
-      <motion.div
-        key="start-game"
-        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-        {...animation}
-      >
-        <div style={{ display: "flex", justifyContent: 'center' }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem", alignItems: "center", width: "100%" }}>
-            <h1 style={{ fontWeight: "bold", fontSize: "2rem" }}>Player List:</h1>
-            <PlayerList players={playerList} setPlayerList={setPlayerList} />
-            <Group attached w="full" maxW="sm">
-              <Input
-                flex="1"
-                placeholder="Name..."
-                variant="outline"
-                value={newPlayerName}
-                onChange={(e) => {
-                  setNewPlayerName(e.currentTarget.value)
-                }}
-                disabled={playerCount >= maxPlayers}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && playerCount < maxPlayers && newPlayerName !== "") {
-                    if (playerList[newPlayerName] !== undefined) {
-                      setErrorMessage("Unique usernames are required.")
-                      return;
-                    } else {
-                      setErrorMessage(undefined);
-                    }
-                    let copy = structuredClone(playerList);
-                    copy[newPlayerName] = {
-                      color: undefined,
-                      points: 0
-                    }
-                    setPlayerList(copy);
-                    setNewPlayerName("");
-                  }
-                }}
-              />
-              <Button
-                bg="bg.subtle"
-                variant="outline"
-                disabled={playerCount >= maxPlayers || newPlayerName === ""}
-                onClick={() => {
-                  if (playerList[newPlayerName] !== undefined) {
-                    setErrorMessage("Unique usernames are required.")
-                    return;
-                  } else {
-                    setErrorMessage(undefined);
-                  }
-                  let copy = structuredClone(playerList);
-                  copy[newPlayerName] = {
-                    color: undefined,
-                    points: 0
-                  }
-                  setPlayerList(copy);
-                  setNewPlayerName("");
-                }}
-              >
-                Submit
+  const getQ = (cat, value, field) =>
+    questions[cat]?.find(q => q.value === value)?.[field] ?? '';
+
+  const setQ = (cat, value, field, text) => {
+    setQuestions(prev => {
+      const existing = prev[cat] || POINT_VALUES.map(v => ({ value: v, question: '', answer: '' }));
+      return {
+        ...prev,
+        [cat]: existing.map(q => q.value === value ? { ...q, [field]: text } : q)
+      };
+    });
+  };
+
+  const canSave = boardName.trim().length > 0 &&
+    categories.length > 0 &&
+    categories.every(c => c.trim().length > 0);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const board = {
+      id: initialBoard?.id || uuidv4(),
+      name: boardName.trim(),
+      data: {
+        categories,
+        questions: Object.fromEntries(
+          categories.map(cat => [cat, POINT_VALUES.map(v => ({
+            value: v,
+            question: getQ(cat, v, 'question'),
+            answer: getQ(cat, v, 'answer'),
+          }))])
+        )
+      }
+    };
+    try {
+      await fetch(`${apiUrl}/boards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(board),
+      });
+    } finally {
+      setSaving(false);
+      onSave();
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '700px', margin: '0 auto', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <Button variant="outline" size="sm" onClick={onBack}>← Back</Button>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Board Builder</h2>
+      </div>
+
+      <div>
+        <div style={{ fontSize: '0.8rem', color: 'gray', marginBottom: '0.25rem' }}>Board Name</div>
+        <Input
+          value={boardName}
+          placeholder="My Jeopardy Board"
+          onChange={e => setBoardName(e.target.value)}
+          variant="outline"
+        />
+      </div>
+
+      <div>
+        <div style={{ fontSize: '0.8rem', color: 'gray', marginBottom: '0.5rem' }}>Categories</div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          {categories.map((cat, idx) => (
+            <Button
+              key={idx}
+              size="sm"
+              variant={idx === activeIdx ? 'solid' : 'outline'}
+              onClick={() => setActiveIdx(idx)}
+            >
+              {cat || `Category ${idx + 1}`}
+            </Button>
+          ))}
+          {categories.length < 8 && (
+            <Button size="sm" variant="ghost" onClick={addCategory}>+ Add</Button>
+          )}
+        </div>
+
+        <div style={{ border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <Input
+              value={activeCat}
+              placeholder={`Category ${activeIdx + 1} name`}
+              onChange={e => renameCat(activeIdx, e.target.value)}
+              variant="outline"
+              flex="1"
+            />
+            {categories.length > 1 && (
+              <Button size="sm" variant="ghost" onClick={() => removeCategory(activeIdx)}>
+                Remove
               </Button>
-            </Group>
-            {errorMessage && <div className="error-message">
-              {errorMessage}
-            </div>}
+            )}
           </div>
+          {activeCat && POINT_VALUES.map(value => (
+            <div key={value} style={{ display: 'grid', gridTemplateColumns: '52px 1fr 1fr', gap: '0.5rem', alignItems: 'center' }}>
+              <span style={{ fontWeight: 'bold', color: '#06B6D4', fontSize: '0.95rem' }}>${value}</span>
+              <Input
+                size="sm"
+                variant="outline"
+                placeholder="Question..."
+                value={getQ(activeCat, value, 'question')}
+                onChange={e => setQ(activeCat, value, 'question', e.target.value)}
+              />
+              <Input
+                size="sm"
+                variant="outline"
+                placeholder="Answer..."
+                value={getQ(activeCat, value, 'answer')}
+                onChange={e => setQ(activeCat, value, 'answer', e.target.value)}
+              />
+            </div>
+          ))}
+          {!activeCat && (
+            <p style={{ color: 'gray', fontSize: '0.875rem' }}>Name this category above to add questions.</p>
+          )}
         </div>
-        <div>
-          <Button className="start-game-button" onClick={() => setGameInfo({})} disabled={playerCount === 0 || !allColorsPicked(playerList)}>
-            Start Game
-          </Button>
-        </div>
-      </motion.div>
-    ) : (
-      <motion.div
-        key="dashboard"
-        {...animation}
+      </div>
+
+      <Button
+        onClick={handleSave}
+        disabled={!canSave || saving}
+        background="#06B6D4"
+        color="white"
+        _hover={{ background: '#0891B2' }}
+        height="50px"
+        fontSize="1rem"
       >
-        <h1 style={{ fontSize: "4rem" }}>
-          <span className="shadow-dance-text">Cashout</span> or <span className="melting-text-container">
-            <span className="melting-text">Crashout</span>
-          </span>
-        </h1>
-        <LastQuestion gameState={gameState} />
-        <div style={{ padding: "0px 2rem" }}>
-          <Grid templateColumns="repeat(4, 1fr)" gap="6" marginBottom="3rem">
-            {Object.keys(playerList).map((playerId) => {
-              return <GridItem>
-                <div style={{ display: "flex", flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
-                  <b style={{ fontSize: "3rem", color: wordToHex[playerList[playerId].color] }}>{playerId}</b>
-                </div>
-                <div style={{ fontSize: "2rem", textAlign: "center" }}>
-                  {playerList[playerId].points}
-                </div>
-              </GridItem>
-            })}
-          </Grid>
-        </div>
-        <div className="game-dashboard">
-          <Grid templateColumns="repeat(7, 1fr)" gap="6">
-            {["Name the Song", "Name the Place", "Who's that Pokemon?", "Stocks", "Bookworms", "Nostalgia Bait", "Another World"].map((v) => {
-              return <GridItem>
-                <b style={{ fontSize: "1.2rem" }}>
-                  {v}
-                </b>
-              </GridItem>
-            })}
-            {Object.keys(gameState).map((questionId) => {
-              return <GridItem>
-                <QuestionCard
-                  questionId={questionId}
-                  question={gameState[questionId]}
-                  players={playerList}
-                  setPlayerList={setPlayerList}
-                  disabled={!gameState[questionId].active}
-                  gameState={gameState}
-                  setGameState={setGameState}
-                />
-              </GridItem>
-            })}
-          </Grid>
-        </div>
-      </motion.div>
-    )}
-  </AnimatePresence>
+        {saving ? 'Saving...' : 'Save Board'}
+      </Button>
+    </div>
+  );
 };
 
-export default App;
+// ── Home Screen ───────────────────────────────────────────────────────────────
+
+const HomeScreen = ({ apiUrl, onNewBoard, onPlay, onEdit }) => {
+  const [boards, setBoards] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/boards`)
+      .then(r => r.ok ? r.json() : [])
+      .catch(() => [])
+      .then(data => { setBoards(data); setLoading(false); });
+  }, []);
+
+  const deleteBoard = async (id) => {
+    await fetch(`${apiUrl}/boards/${id}`, { method: 'DELETE' });
+    setBoards(prev => prev.filter(b => b.id !== id));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px', margin: '0 auto' }}>
+      <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', textAlign: 'center' }}>Jeopardy</h1>
+      <Button
+        onClick={onNewBoard}
+        height="50px"
+        fontSize="1rem"
+        background="#06B6D4"
+        color="white"
+        _hover={{ background: '#0891B2' }}
+      >
+        + New Board
+      </Button>
+      {loading ? (
+        <p style={{ textAlign: 'center', color: 'gray' }}>Loading...</p>
+      ) : boards.length === 0 ? (
+        <p style={{ textAlign: 'center', color: 'gray' }}>No saved boards yet. Create one above.</p>
+      ) : (
+        <>
+          <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>Saved Boards</div>
+          {boards.map(board => (
+            <div key={board.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px' }}>
+              <span style={{ fontWeight: '500' }}>{board.name}</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Button size="sm" background="#06B6D4" color="white" _hover={{ background: '#0891B2' }} onClick={() => onPlay(board.id)}>
+                  Play
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => onEdit(board.id)}>Edit</Button>
+                <Button size="sm" variant="ghost" onClick={() => deleteBoard(board.id)}>Delete</Button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+};
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
+const Jeopardy = () => {
+  const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
+  const [view, setView] = useState('home'); // 'home' | 'builder' | 'setup' | 'game'
+  const [editingBoard, setEditingBoard] = useState(null);
+  const [activeBoard, setActiveBoard] = useState(null);
+  const [gameState, setGameState] = useState({});
+  const [playerList, setPlayerList] = useState({});
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [errorMessage, setErrorMessage] = useState(undefined);
+
+  const loadBoard = async (id) => {
+    const res = await fetch(`${apiUrl}/boards/${id}`);
+    return res.json();
+  };
+
+  const buildGameState = (board) => {
+    const state = {};
+    POINT_VALUES.forEach(value => {
+      board.data.categories.forEach(cat => {
+        const q = board.data.questions[cat]?.find(q => q.value === value);
+        state[`${cat}__${value}`] = {
+          category: cat,
+          question: q?.question || '',
+          answer: q?.answer || '',
+          value,
+          active: true,
+        };
+      });
+    });
+    return state;
+  };
+
+  const handlePlay = async (boardId) => {
+    const board = await loadBoard(boardId);
+    setActiveBoard(board);
+    setGameState(buildGameState(board));
+    setPlayerList({});
+    setNewPlayerName('');
+    setErrorMessage(undefined);
+    setView('setup');
+  };
+
+  const handleEdit = async (boardId) => {
+    const board = await loadBoard(boardId);
+    setEditingBoard(board);
+    setView('builder');
+  };
+
+  const addPlayer = () => {
+    if (!newPlayerName || playerList[newPlayerName] !== undefined) {
+      setErrorMessage('Unique usernames are required.');
+      return;
+    }
+    setErrorMessage(undefined);
+    setPlayerList(prev => ({ ...prev, [newPlayerName]: { color: undefined, points: 0 } }));
+    setNewPlayerName('');
+  };
+
+  const categories = activeBoard?.data?.categories || [];
+  const playerCount = Object.keys(playerList).length;
+  const maxPlayers = 4;
+
+  return (
+    <AnimatePresence mode="wait">
+      {view === 'home' && (
+        <motion.div key="home" {...animation}>
+          <HomeScreen
+            apiUrl={apiUrl}
+            onNewBoard={() => { setEditingBoard(null); setView('builder'); }}
+            onPlay={handlePlay}
+            onEdit={handleEdit}
+          />
+        </motion.div>
+      )}
+
+      {view === 'builder' && (
+        <motion.div key="builder" {...animation}>
+          <BoardBuilder
+            apiUrl={apiUrl}
+            initialBoard={editingBoard}
+            onSave={() => setView('home')}
+            onBack={() => setView('home')}
+          />
+        </motion.div>
+      )}
+
+      {view === 'setup' && (
+        <motion.div key="setup" {...animation} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center', width: '100%' }}>
+              <h1 style={{ fontWeight: 'bold', fontSize: '2rem' }}>{activeBoard?.name}</h1>
+              <h2 style={{ fontWeight: 'bold', fontSize: '1.25rem' }}>Players</h2>
+              <PlayerList players={playerList} setPlayerList={setPlayerList} />
+              <Group attached w="full" maxW="sm">
+                <Input
+                  flex="1"
+                  placeholder="Name..."
+                  variant="outline"
+                  value={newPlayerName}
+                  disabled={playerCount >= maxPlayers}
+                  onChange={e => setNewPlayerName(e.currentTarget.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && playerCount < maxPlayers && newPlayerName) addPlayer(); }}
+                />
+                <Button
+                  bg="bg.subtle"
+                  variant="outline"
+                  disabled={playerCount >= maxPlayers || !newPlayerName}
+                  onClick={addPlayer}
+                >
+                  Add
+                </Button>
+              </Group>
+              {errorMessage && <div className="error-message">{errorMessage}</div>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+            <Button variant="outline" onClick={() => setView('home')}>← Back</Button>
+            <Button
+              className="start-game-button"
+              onClick={() => setView('game')}
+              disabled={playerCount === 0 || !allColorsPicked(playerList)}
+            >
+              Start Game
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {view === 'game' && (
+        <motion.div key="game" {...animation}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', padding: '0 2rem' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>{activeBoard?.name}</h1>
+            <Button variant="outline" size="sm" onClick={() => setView('home')}>End Game</Button>
+          </div>
+          <div style={{ padding: '0 2rem' }}>
+            <Grid templateColumns={`repeat(${playerCount}, 1fr)`} gap="6" marginBottom="3rem">
+              {Object.keys(playerList).map(playerId => (
+                <GridItem key={playerId}>
+                  <div style={{ textAlign: 'center' }}>
+                    <b style={{ fontSize: '2.5rem', color: wordToHex[playerList[playerId].color] }}>{playerId}</b>
+                  </div>
+                  <div style={{ fontSize: '1.75rem', textAlign: 'center' }}>
+                    {playerList[playerId].points}
+                  </div>
+                </GridItem>
+              ))}
+            </Grid>
+            <div className="game-dashboard">
+              <Grid templateColumns={`repeat(${categories.length}, 1fr)`} gap="4">
+                {categories.map(cat => (
+                  <GridItem key={cat}>
+                    <b style={{ fontSize: '1rem' }}>{cat}</b>
+                  </GridItem>
+                ))}
+                {Object.keys(gameState).map(questionId => (
+                  <GridItem key={questionId}>
+                    <QuestionCard
+                      questionId={questionId}
+                      question={gameState[questionId]}
+                      players={playerList}
+                      setPlayerList={setPlayerList}
+                      disabled={!gameState[questionId].active}
+                      gameState={gameState}
+                      setGameState={setGameState}
+                    />
+                  </GridItem>
+                ))}
+              </Grid>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default Jeopardy;
