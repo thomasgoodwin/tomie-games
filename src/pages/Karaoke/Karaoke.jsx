@@ -209,7 +209,7 @@ const Karaoke = () => {
     return isValidUrl(newLink);
   }, [newLink])
 
-  const isMobile = navigator.userAgentData?.mobile;
+  const isMobile = navigator.userAgentData?.mobile ?? /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   useEffect(() => {
     if (isMobile) {
       document.getElementById("root").style.padding = "0";
