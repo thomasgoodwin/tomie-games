@@ -261,7 +261,7 @@ const Karaoke = () => {
         background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
         color: "#fff",
         padding: ".6rem 1.5rem",
-        borderRadius: "8px",
+        borderRadius: isMobile ? "0" : "8px",
         fontWeight: "600",
         width: "100%",
         textAlign: "center",
@@ -270,7 +270,7 @@ const Karaoke = () => {
       }}>
         Demo Mode — changes are local only
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: ".75rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: ".75rem", width: "100%", padding: isMobile ? "0 1rem" : "0", boxSizing: "border-box" }}>
         <label style={{ color: "#fff", fontWeight: "600", fontSize: "1rem", whiteSpace: "nowrap" }}>Password:</label>
         <Input
           size="md"
@@ -278,9 +278,10 @@ const Karaoke = () => {
           placeholder="Enter password..."
           variant="subtle"
           backgroundColor={"rgba(255,255,255,0.95)"}
-          height="40px"
+          height={isMobile ? "50px" : "40px"}
           color="black"
           borderRadius="8px"
+          flex="1"
           onChange={(e) => setPasswordInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && passwordInput.trim()) {
@@ -290,7 +291,8 @@ const Karaoke = () => {
         />
         <Button
           size="md"
-          height="40px"
+          height={isMobile ? "50px" : "40px"}
+          paddingX={isMobile ? "1.25rem" : "1rem"}
           background={"#06B6D4"}
           color={"white"}
           _hover={{ background: "#0891B2" }}
