@@ -255,7 +255,7 @@ const Karaoke = () => {
       }
     }
   }
-  return <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: isMobile ? "0" : "0 2rem 2rem 2rem", gap: "1.5rem" }}>
+  return <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "stretch" : "center", padding: isMobile ? "0" : "0 2rem 2rem 2rem", gap: "1.5rem" }}>
     {demoMode && <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: ".75rem" }}>
       <div style={{
         background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
@@ -270,8 +270,9 @@ const Karaoke = () => {
       }}>
         Demo Mode — changes are local only
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: ".75rem", width: "100%", padding: isMobile ? "0 1rem" : "0", boxSizing: "border-box" }}>
-        <label style={{ color: "#fff", fontWeight: "600", fontSize: "1rem", whiteSpace: "nowrap" }}>Password:</label>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: ".75rem", width: "100%", padding: isMobile ? "0 1rem" : "0", boxSizing: "border-box" }}>
+        <label style={{ color: "#fff", fontWeight: "600", fontSize: "1rem" }}>Password:</label>
+        <div style={{ display: "flex", gap: ".75rem", flex: 1 }}>
         <Input
           size="md"
           value={passwordInput}
@@ -302,9 +303,10 @@ const Karaoke = () => {
         >
           Confirm
         </Button>
+        </div>
       </div>
     </div>}
-    <div style={{ display: "flex", justifyContent: isAdmin ? "space-between" : "center", width: "100%", gap: "2rem" }}>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: isAdmin ? "space-between" : "center", width: "100%", gap: "2rem" }}>
       <Dialog.Root
         role="alertdialog"
         motionPreset="slide-in-bottom"
@@ -362,7 +364,7 @@ const Karaoke = () => {
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
-      {isAdmin && <div style={{ width: "80%" }}>
+      {isAdmin && <div style={{ width: isMobile ? "100%" : "80%" }}>
         {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} demoMode={demoMode} onNextSong={() => deleteSongLocal(queue[0]?.id)} />}
         <AnimatePresence mode="wait">
           <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem", gap: "1.5rem" }}>
@@ -385,7 +387,7 @@ const Karaoke = () => {
           </motion.div>
         </AnimatePresence>
       </div>}
-      <div style={{ width: isAdmin ? "20%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem" }}>
+      <div style={{ width: isMobile ? "100%" : isAdmin ? "20%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem", padding: isMobile ? "0 1rem" : "0", boxSizing: "border-box" }}>
         <h2 style={{
           fontSize: "2rem",
           fontWeight: "700",
