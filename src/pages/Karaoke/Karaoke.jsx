@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import YouTubePlayer from "../../components/Custom/YoutubePlayer";
 import { getYouTubeTitle, isLocalhost, isValidUrl } from "@/util";
 import { useQueueSocket } from "@/components/Custom/useQueueSocket";
@@ -107,10 +108,12 @@ const TakeAdminButton = ({ apiUrl, clientId, isAdmin, secret }) => {
 }
 
 const Karaoke = () => {
+  const navigate = useNavigate();
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [demoMode, setDemoMode] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
   const [newLink, setNewLink] = useState("");
   const [manualTitle, setManualTitle] = useState("");
   const [showManualTitleModal, setShowManualTitleModal] = useState(false);
@@ -246,18 +249,51 @@ const Karaoke = () => {
   }
 
   return <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "0 2rem 2rem 2rem", gap: "1.5rem" }}>
-    {demoMode && <div style={{
-      background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
-      color: "#fff",
-      padding: ".6rem 1.5rem",
-      borderRadius: "8px",
-      fontWeight: "600",
-      width: "100%",
-      textAlign: "center",
-      fontSize: "1rem",
-      letterSpacing: ".5px",
-    }}>
-      Demo Mode — changes are local only
+    {demoMode && <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: ".75rem" }}>
+      <div style={{
+        background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
+        color: "#fff",
+        padding: ".6rem 1.5rem",
+        borderRadius: "8px",
+        fontWeight: "600",
+        width: "100%",
+        textAlign: "center",
+        fontSize: "1rem",
+        letterSpacing: ".5px",
+      }}>
+        Demo Mode — changes are local only
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: ".75rem" }}>
+        <label style={{ color: "#fff", fontWeight: "600", fontSize: "1rem", whiteSpace: "nowrap" }}>Password:</label>
+        <Input
+          size="md"
+          value={passwordInput}
+          placeholder="Enter password..."
+          variant="subtle"
+          backgroundColor={"rgba(255,255,255,0.95)"}
+          height="40px"
+          color="black"
+          borderRadius="8px"
+          onChange={(e) => setPasswordInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && passwordInput.trim()) {
+              navigate(`/karaoke/${passwordInput.trim()}`);
+            }
+          }}
+        />
+        <Button
+          size="md"
+          height="40px"
+          background={"#06B6D4"}
+          color={"white"}
+          _hover={{ background: "#0891B2" }}
+          borderRadius="8px"
+          disabled={!passwordInput.trim()}
+          onClick={() => navigate(`/karaoke/${passwordInput.trim()}`)}
+        >
+          Confirm
+        </Button>
+      </div>
     </div>}
     <div style={{ display: "flex", justifyContent: isAdmin ? "space-between" : "center", width: "100%", gap: "2rem" }}>
     <Dialog.Root
