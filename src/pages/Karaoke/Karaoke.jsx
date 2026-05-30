@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import YouTubePlayer from "../../components/Custom/YoutubePlayer";
 import { getYouTubeTitle, isLocalhost, isValidUrl } from "@/util";
 import { useQueueSocket } from "@/components/Custom/useQueueSocket";
@@ -108,7 +107,6 @@ const TakeAdminButton = ({ apiUrl, clientId, isAdmin, secret }) => {
 }
 
 const Karaoke = () => {
-  const navigate = useNavigate();
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -286,7 +284,7 @@ const Karaoke = () => {
           onChange={(e) => setPasswordInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && passwordInput.trim()) {
-              navigate(`/karaoke/${passwordInput.trim()}`);
+              window.location.href = `/karaoke/${passwordInput.trim()}`;
             }
           }}
         />
@@ -298,7 +296,7 @@ const Karaoke = () => {
           _hover={{ background: "#0891B2" }}
           borderRadius="8px"
           disabled={!passwordInput.trim()}
-          onClick={() => navigate(`/karaoke/${passwordInput.trim()}`)}
+          onClick={() => { window.location.href = `/karaoke/${passwordInput.trim()}`; }}
         >
           Confirm
         </Button>
