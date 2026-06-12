@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import NotFound from "./pages/NotFound/NotFound";
 import Jeopardy from "./pages/Jeopardy/Jeopardy"
 import Karaoke from "./pages/Karaoke/Karaoke";
+import VillageSim from "./pages/VillageSim/VillageSim";
 import App from './App.jsx';
 
 const router = createBrowserRouter([
@@ -20,6 +21,10 @@ const router = createBrowserRouter([
       {
         path: "karaoke/:id",
         element: <Karaoke />,
+      },
+      {
+        path: "village-sim",
+        element: <VillageSim />,
       },
     ],
   },

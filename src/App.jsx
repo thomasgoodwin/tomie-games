@@ -9,6 +9,7 @@ const App = () => {
       </h1>
       <Link style={{ display: "flex", justifyContent: "center" }} href="/karaoke/aaa">Karaoke</Link>
       <Link style={{ display: "flex", justifyContent: "center" }} href="/jeopardy">Jeopardy</Link>
+      <Link style={{ display: "flex", justifyContent: "center" }} href="/village-sim">Village Sim</Link>
     </div>
   </div>
 };
