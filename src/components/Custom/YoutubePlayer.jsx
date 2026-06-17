@@ -119,11 +119,16 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin, demoMode, onNextSo
       ref={containerRef}
       style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: "8px", overflow: "hidden", border: "2px solid rgba(6, 182, 212, 0.3)" }}
     />
+    {!started && <div
+      style={{ position: "absolute", top: 0, left: 0, width: "100%", aspectRatio: "16 / 9", borderRadius: "8px", cursor: "not-allowed" }}
+    />}
     <AnimatePresence mode="wait">
       {started && <motion.div style={{ justifyContent: "right", display: 'flex', marginTop: "1rem" }}>
         <Button
           fontSize={"1.25rem"}
-          padding={"0.75rem 1.5rem"}
+          paddingTop={"0.65rem"}
+          paddingBottom={"0.85rem"}
+          paddingX={"1.5rem"}
           height={"unset"}
           background={"#06B6D4"}
           color={"white"}
@@ -138,7 +143,9 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin, demoMode, onNextSo
       <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem" }}>
         <Button
           fontSize={"1.25rem"}
-          padding={"0.75rem 1.5rem"}
+          paddingTop={"0.65rem"}
+          paddingBottom={"0.85rem"}
+          paddingX={"1.5rem"}
           height={"unset"}
           background={"#06B6D4"}
           color={"white"}

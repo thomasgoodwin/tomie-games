@@ -117,6 +117,7 @@ const Karaoke = () => {
   const [showManualTitleModal, setShowManualTitleModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminActive, setAdminActive] = useState(false);
+  const [queueCollapsed, setQueueCollapsed] = useState(false);
   const [clientId, setClientId] = useState(localStorage.getItem("clientId"));
   const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
   const secret = window.location.pathname
@@ -255,6 +256,93 @@ const Karaoke = () => {
       }
     }
   }
+  const collapsible = isAdmin && !isMobile;
+
+  const queueContent = <>
+    <h2 style={{
+      fontSize: "2rem",
+      fontWeight: "700",
+      background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+      marginBottom: ".25rem",
+    }}>Queue</h2>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      modifiers={[restrictToVerticalAxis]}
+    >
+      <SortableContext
+        items={queue.map((song) => song.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {queue.map(song => {
+          return <SortableItem
+            key={song.id}
+            id={song.id}
+            title={song.title}
+            apiUrl={apiUrl}
+            secret={secret}
+            demoMode={demoMode}
+            onDelete={deleteSongLocal}
+          />
+        })}
+      </SortableContext>
+    </DndContext>
+    <div style={{ display: "flex" }}>
+      <Input
+        size="md"
+        value={newLink}
+        placeholder="Paste a YouTube link..."
+        variant="subtle"
+        backgroundColor={"rgba(255,255,255,0.95)"}
+        borderTopRightRadius={"0px"}
+        borderBottomRightRadius={"0px"}
+        borderTopLeftRadius={"8px"}
+        borderBottomLeftRadius={"8px"}
+        height="50px"
+        color="black"
+        onChange={(e) => {
+          setNewLink(e.target.value)
+        }}
+      />
+      <Button
+        size="md"
+        borderTopLeftRadius={"0px"}
+        borderBottomLeftRadius={"0px"}
+        display={"flex"}
+        alignItems={"center"}
+        justifyContent={"center"}
+        fontSize={"1.5rem"}
+        lineHeight={"1"}
+        height="50px"
+        width="50px"
+        minWidth="50px"
+        paddingTop={"0"}
+        paddingBottom={"4px"}
+        paddingX={"0"}
+        background={"#06B6D4"}
+        color={"white"}
+        _hover={{ background: "#0891B2" }}
+        disabled={!urlValid}
+        onClick={() => {
+          addSongToDB(newLink);
+        }}
+      >
+        +
+      </Button>
+    </div>
+    {!isAdmin && !isMobile && <div style={{ marginTop: "1rem" }}>
+      <TakeAdminButton
+        apiUrl={apiUrl}
+        clientId={clientId}
+        isAdmin={isAdmin}
+        secret={secret}
+      />
+    </div>}
+  </>;
+
   return <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "stretch" : "center", padding: isMobile ? "0" : "0 2rem 2rem 2rem", gap: "1.5rem" }}>
     {demoMode && <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: ".75rem" }}>
       <div style={{
@@ -364,7 +452,7 @@ const Karaoke = () => {
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
-      {isAdmin && <div style={{ width: isMobile ? "100%" : "80%" }}>
+      {isAdmin && <div style={{ flex: isMobile ? undefined : 1, width: isMobile ? "100%" : undefined, minWidth: 0 }}>
         {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} demoMode={demoMode} onNextSong={() => deleteSongLocal(queue[0]?.id)} />}
         <AnimatePresence mode="wait">
           <motion.div style={{ justifyContent: "center", display: 'flex', marginTop: "1rem", gap: "1.5rem" }}>
@@ -387,88 +475,44 @@ const Karaoke = () => {
           </motion.div>
         </AnimatePresence>
       </div>}
-      <div style={{ width: isMobile ? "100%" : isAdmin ? "20%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem", padding: isMobile ? "0 1rem" : "0", boxSizing: "border-box" }}>
-        <h2 style={{
-          fontSize: "2rem",
-          fontWeight: "700",
-          background: "linear-gradient(135deg, #06B6D4, #0EA5E9)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          marginBottom: ".25rem",
-        }}>Queue</h2>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-          modifiers={[restrictToVerticalAxis]}
+      {collapsible && <button
+        onClick={() => setQueueCollapsed((c) => !c)}
+        title={queueCollapsed ? "Show queue" : "Hide queue"}
+        style={{
+          alignSelf: "center",
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#06B6D4",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          width: "28px",
+          height: "64px",
+          paddingBottom: "4px",
+          cursor: "pointer",
+          fontSize: "1.4rem",
+          lineHeight: "1",
+        }}
+      >
+        {queueCollapsed ? "‹" : "›"}
+      </button>}
+      {collapsible ? (
+        <motion.div
+          animate={{ width: queueCollapsed ? 0 : 340, opacity: queueCollapsed ? 0 : 1 }}
+          transition={{ type: "tween", duration: 0.3 }}
+          style={{ overflow: "hidden", flexShrink: 0, boxSizing: "border-box" }}
         >
-          <SortableContext
-            items={queue.map((song) => song.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {queue.map(song => {
-              return <SortableItem
-                key={song.id}
-                id={song.id}
-                title={song.title}
-                apiUrl={apiUrl}
-                secret={secret}
-                demoMode={demoMode}
-                onDelete={deleteSongLocal}
-              />
-            })}
-          </SortableContext>
-        </DndContext>
-        <div style={{ display: "flex" }}>
-          <Input
-            size="md"
-            value={newLink}
-            placeholder="Paste a YouTube link..."
-            variant="subtle"
-            backgroundColor={"rgba(255,255,255,0.95)"}
-            borderTopRightRadius={"0px"}
-            borderBottomRightRadius={"0px"}
-            borderTopLeftRadius={"8px"}
-            borderBottomLeftRadius={"8px"}
-            height="50px"
-            color="black"
-            onChange={(e) => {
-              setNewLink(e.target.value)
-            }}
-          />
-          <Button
-            size="md"
-            borderTopLeftRadius={"0px"}
-            borderBottomLeftRadius={"0px"}
-            display={"flex"}
-            alignItems={"center"}
-            justifyContent={"center"}
-            fontSize={"1.5rem"}
-            lineHeight={"1"}
-            height="50px"
-            width="50px"
-            minWidth="50px"
-            padding={"0"}
-            background={"#06B6D4"}
-            color={"white"}
-            _hover={{ background: "#0891B2" }}
-            disabled={!urlValid}
-            onClick={() => {
-              addSongToDB(newLink);
-            }}
-          >
-            +
-          </Button>
+          <div style={{ width: 340, display: "flex", flexDirection: "column", gap: ".5rem", boxSizing: "border-box" }}>
+            {queueContent}
+          </div>
+        </motion.div>
+      ) : (
+        <div style={{ width: isMobile ? "100%" : "75%", display: "flex", flexDirection: "column", gap: ".5rem", padding: isMobile ? "0 1rem" : "0", boxSizing: "border-box" }}>
+          {queueContent}
         </div>
-        {!isAdmin && !isMobile && <div style={{ marginTop: "1rem" }}>
-          <TakeAdminButton
-            apiUrl={apiUrl}
-            clientId={clientId}
-            isAdmin={isAdmin}
-            secret={secret}
-          />
-        </div>}
-      </div>
+      )}
     </div>
   </div>
 };
