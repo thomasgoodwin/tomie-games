@@ -33,6 +33,7 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin, demoMode, onNextSo
   const containerRef = useRef(null);
   const nextSongRef = useRef(null);
   const [started, setStarted] = useState(false);
+  const [idle, setIdle] = useState(false);
   const [error, setError] = useState("")
   const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
 
@@ -98,12 +99,20 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin, demoMode, onNextSo
     }
     const nextIndex = 1;
     if (!queue[nextIndex]) {
+      setIdle(true);
       return;
     }
     playerRef.current.loadVideoById(getYouTubeVideoID(queue[nextIndex].url));
   };
 
   nextSongRef.current = nextSong;
+
+  useEffect(() => {
+    if (started && idle && queue.length > 0 && playerRef.current) {
+      playerRef.current.loadVideoById(getYouTubeVideoID(queue[0].url));
+      setIdle(false);
+    }
+  }, [queue, started, idle]);
 
   return <div style={{ width: "100%", position: "relative" }}>
     <div
