@@ -283,7 +283,7 @@ const Karaoke = () => {
           color="black"
           borderRadius="8px"
           flex="1"
-          onChange={(e) => setPasswordInput(e.target.value)}
+          onChange={(e) => setPasswordInput(e.target.value.toLowerCase())}
           onKeyDown={(e) => {
             if (e.key === "Enter" && passwordInput.trim()) {
               window.location.href = `/karaoke/${passwordInput.trim()}`;

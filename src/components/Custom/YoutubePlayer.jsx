@@ -31,13 +31,14 @@ const loadYouTubeAPI = () => {
 const YouTubePlayer = ({ queue, secret, adminActive, isAdmin, demoMode, onNextSong }) => {
   const playerRef = useRef(null);
   const containerRef = useRef(null);
+  const nextSongRef = useRef(null);
   const [started, setStarted] = useState(false);
   const [error, setError] = useState("")
   const apiUrl = isLocalhost() ? import.meta.env.VITE_LOCAL_URL : import.meta.env.VITE_BACKEND_URL;
 
   const onPlayerStateChange = (e) => {
     if (e.data === END_OF_SONG_CODE) {
-      nextSong();
+      nextSongRef.current?.();
     }
   }
 
@@ -96,8 +97,13 @@ const YouTubePlayer = ({ queue, secret, adminActive, isAdmin, demoMode, onNextSo
       }
     }
     const nextIndex = 1;
+    if (!queue[nextIndex]) {
+      return;
+    }
     playerRef.current.loadVideoById(getYouTubeVideoID(queue[nextIndex].url));
   };
+
+  nextSongRef.current = nextSong;
 
   return <div style={{ width: "100%", position: "relative" }}>
     <div
