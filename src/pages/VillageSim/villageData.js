@@ -107,6 +107,11 @@ export const CARAVAN = {
   guardsNeeded: 5,
 };
 
+// the village answers to a duke who skims the treasury each season, rising when he raises taxes
+export const DUKE = { perFamilyPerSeasonCc: 200, levyCc: 4000 };
+
+export const EVENT_CHANCE = 0.33;
+
 export const WOOL = { lbPerSheep: 6, homespunMin: 4 };
 
 export const HEALER = { threshold: 70, costCc: 500, heal: 30 };
@@ -203,8 +208,6 @@ const createVillager = (id, name, angle, random) => {
     livestock: { ...BASE_LIVESTOCK },
     piglets: 0,
     kids: 0,
-    x: field.x + (random() - 0.5) * 7,
-    y: field.y + (random() - 0.5) * 7,
     field,
   };
 };
@@ -227,6 +230,8 @@ export const createGame = () => ({
   oreFound: false,
   pendingSettlers: 0,
   settlersArrived: 0,
+  dukeTaxLevel: 1,
+  events: [],
   report: null,
 });
 
@@ -296,6 +301,171 @@ const consume = (pantry, key, need) => {
   return need - used;
 };
 
+const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+const hasLivestock = (v) => v.livestock.goats + v.livestock.sheep + v.livestock.sows > 0;
+
+const EVENTS = [
+  {
+    id: "feud", title: "A deadly feud", severity: "mild", tone: "bad",
+    eligible: (g) => g.villagers.length >= 2,
+    run: (g) => {
+      const [killer, victim] = shuffle([...g.villagers]).slice(0, 2);
+      return {
+        message: `${killer.name} got into an argument with ${victim.name} and killed them in a fight.`,
+        game: { ...g, villagers: g.villagers.filter((v) => v.id !== victim.id) },
+      };
+    },
+  },
+  {
+    id: "blight", title: "Crop blight", severity: "severe", tone: "bad",
+    eligible: () => true,
+    run: (g) => ({
+      message: "A crop blight has swept the village; the fields are ruined and the granaries half emptied.",
+      game: {
+        ...g,
+        villagers: g.villagers.map((v) => ({
+          ...v,
+          field: { ...v.field, burned: true },
+          pantry: { ...v.pantry, grain: v.pantry.grain * 0.5, produce: v.pantry.produce * 0.5 },
+        })),
+      },
+    }),
+  },
+  {
+    id: "plague", title: "A sickness spreads", severity: "severe", tone: "bad",
+    eligible: () => true,
+    run: (g) => ({
+      message: "A sickness sweeps through the village, leaving everyone weak and feverish.",
+      game: { ...g, villagers: g.villagers.map((v) => ({ ...v, health: Math.max(5, v.health - 35) })) },
+    }),
+  },
+  {
+    id: "dukeRaise", title: "The duke raises taxes", severity: "moderate", tone: "bad",
+    eligible: () => true,
+    run: (g) => ({
+      message: `Your duke has raised taxes; the crown's seasonal levy on the village climbs to ${g.dukeTaxLevel + 1}x.`,
+      game: { ...g, dukeTaxLevel: g.dukeTaxLevel + 1 },
+    }),
+  },
+  {
+    id: "dukeLevy", title: "The duke demands a levy", severity: "moderate", tone: "bad",
+    eligible: (g) => g.treasury > 0,
+    run: (g) => {
+      const paid = Math.min(g.treasury, DUKE.levyCc);
+      return {
+        message: `The duke's men rode in and seized a special levy of ${formatMoney(paid)} from the treasury.`,
+        game: { ...g, treasury: g.treasury - paid },
+      };
+    },
+  },
+  {
+    id: "wolves", title: "Wolves in the night", severity: "moderate", tone: "bad",
+    eligible: (g) => g.villagers.some(hasLivestock),
+    run: (g) => {
+      const victim = pickOne(g.villagers.filter(hasLivestock));
+      return {
+        message: `Wolves raided ${victim.name}'s pens overnight and savaged the livestock.`,
+        game: {
+          ...g,
+          villagers: g.villagers.map((v) => v.id === victim.id
+            ? { ...v, livestock: {
+                ...v.livestock,
+                goats: Math.floor(v.livestock.goats / 2),
+                sheep: Math.floor(v.livestock.sheep / 2),
+                sows: Math.floor(v.livestock.sows / 2),
+              } }
+            : v),
+        },
+      };
+    },
+  },
+  {
+    id: "drought", title: "A dry season", severity: "moderate", tone: "bad",
+    eligible: () => true,
+    run: (g) => ({
+      message: "A long drought withers the pastures; feed stores and gardens suffer.",
+      game: { ...g, villagers: g.villagers.map((v) => ({ ...v, feed: v.feed * 0.5, pantry: { ...v.pantry, produce: v.pantry.produce * 0.6 } })) },
+    }),
+  },
+  {
+    id: "bumper", title: "A bountiful harvest", severity: "moderate", tone: "good",
+    eligible: () => true,
+    run: (g) => ({
+      message: "Perfect weather brings a bountiful harvest; every granary overflows.",
+      game: { ...g, villagers: g.villagers.map((v) => ({ ...v, pantry: { ...v.pantry, grain: v.pantry.grain + 400, produce: v.pantry.produce + 400 } })) },
+    }),
+  },
+  {
+    id: "festival", title: "A village festival", severity: "mild", tone: "good",
+    eligible: () => true,
+    run: (g) => ({
+      message: "A festival lifts everyone's spirits and bellies; the village is hale and merry.",
+      game: { ...g, villagers: g.villagers.map((v) => ({ ...v, health: Math.min(100, v.health + 20) })) },
+    }),
+  },
+  {
+    id: "newcomer", title: "A family seeks land", severity: "moderate", tone: "good",
+    eligible: () => true,
+    run: (g) => {
+      const random = mulberry32((Date.now() ^ g.turn) & 0xffff);
+      const name = SETTLER_NAMES[g.settlersArrived % SETTLER_NAMES.length];
+      const settler = createVillager(`settler-${g.settlersArrived}`, name, Math.random() * Math.PI * 2, random);
+      return {
+        message: `${name} and their kin arrived seeking land and settled a new farmstead.`,
+        game: { ...g, villagers: [...g.villagers, settler], settlersArrived: g.settlersArrived + 1 },
+      };
+    },
+  },
+  {
+    id: "treasure", title: "An old hoard", severity: "moderate", tone: "good",
+    eligible: () => true,
+    run: (g) => {
+      const found = 5000 + Math.floor(Math.random() * 5000);
+      return {
+        message: `A villager unearthed a buried hoard worth ${formatMoney(found)} and gave it to the common treasury.`,
+        game: { ...g, treasury: g.treasury + found },
+      };
+    },
+  },
+  {
+    id: "merchant", title: "A generous merchant", severity: "mild", tone: "good",
+    eligible: () => true,
+    run: (g) => {
+      const gain = 1500 + Math.floor(Math.random() * 1500);
+      return {
+        message: `A passing merchant paid handsomely for the village's wares, adding ${formatMoney(gain)} to the treasury.`,
+        game: { ...g, treasury: g.treasury + gain },
+      };
+    },
+  },
+];
+
+const applyEvent = (game) => {
+  if (Math.random() >= EVENT_CHANCE)
+  {
+    return game;
+  }
+  const eligible = EVENTS.filter((e) => e.eligible(game));
+  if (eligible.length === 0)
+  {
+    return game;
+  }
+  const event = pickOne(eligible);
+  const { message, game: next } = event.run(game);
+  const elapsed = game.turn - 1;
+  const entry = {
+    key: `${elapsed}-${event.id}`,
+    title: event.title,
+    severity: event.severity,
+    tone: event.tone,
+    message,
+    season: SEASONS[elapsed % SEASONS.length],
+    year: Math.floor(elapsed / SEASONS.length) + 1,
+  };
+  return { ...next, report: { ...next.report, event: entry }, events: [entry, ...next.events].slice(0, 50) };
+};
+
 export const simulateSeason = (game) => {
   const season = SEASONS[game.turn % SEASONS.length];
   const share = FARM.seasonYield[season] / YIELD_TOTAL;
@@ -320,6 +490,8 @@ export const simulateSeason = (game) => {
     healed: 0,
     robbed: false,
     oreFound: false,
+    dukeTaxPaid: 0,
+    event: null,
     raid: null,
   };
 
@@ -643,6 +815,10 @@ export const simulateSeason = (game) => {
     treasury += MINE.incomeCc;
   }
 
+  const dukeDue = DUKE.perFamilyPerSeasonCc * updated.length * game.dukeTaxLevel;
+  report.dukeTaxPaid = Math.min(treasury, dukeDue);
+  treasury -= report.dukeTaxPaid;
+
   for (const v of updated)
   {
     if (v.health < HEALER.threshold && treasury >= HEALER.costCc)
@@ -673,14 +849,14 @@ export const simulateSeason = (game) => {
 
   if (game.truce > 0)
   {
-    return { ...baseGame, villagers: updated, treasury, truce: game.truce - 1 };
+    return applyEvent({ ...baseGame, villagers: updated, treasury, truce: game.truce - 1 });
   }
 
   report.roll = Math.random() * 100;
 
   if (report.roll <= report.safety)
   {
-    return { ...baseGame, villagers: updated, treasury, truce: 0 };
+    return applyEvent({ ...baseGame, villagers: updated, treasury, truce: 0 });
   }
 
   const retinueLost = Math.round(game.retinue.length * rollBetween(SECURITY.retinueDeathRange));
@@ -693,7 +869,7 @@ export const simulateSeason = (game) => {
 
   report.raid = { retinueLost, villagersLost, fieldsBurned: burnSet.size };
 
-  return {
+  return applyEvent({
     ...baseGame,
     treasury: treasury * SECURITY.wealthKeptShare,
     truce: SECURITY.truceSeasons,
@@ -718,7 +894,7 @@ export const simulateSeason = (game) => {
       kids: Math.floor(villager.kids * SECURITY.livestockKeptShare),
       field: burnSet.has(i) ? { ...villager.field, burned: true } : villager.field,
     })),
-  };
+  });
 };
 
 export const formatMoney = (cc) => {

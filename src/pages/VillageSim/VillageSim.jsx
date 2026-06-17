@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@chakra-ui/react";
 import { Tooltip } from "../../components/ui/tooltip";
 import {
-  SEASONS, SOCIAL_STATUS, SECURITY, PROJECTS, TAX, CARAVAN, MILITIA,
+  SEASONS, SOCIAL_STATUS, SECURITY, PROJECTS, TAX, CARAVAN, MILITIA, DUKE,
   calcSafety, createGame, simulateSeason, recruitRetinue, buildProject,
   canBuild, projectCost, formatMoney,
 } from "./villageData";
@@ -23,9 +23,9 @@ const Field = ({ field, owner }) => {
       height="48"
       style={{
         position: "absolute",
-        left: `${field.x}%`,
-        top: `${field.y}%`,
-        transform: `translate(-50%, -50%) rotate(${field.rotation}deg)`,
+        left: "-36px",
+        top: "-48px",
+        transform: `rotate(${field.rotation}deg)`,
       }}
     >
       <rect x="1" y="1" width="70" height="46" rx="4"
@@ -176,7 +176,7 @@ const FarmAnimals = ({ villager }) => {
       viewBox="0 0 46 14"
       width="46"
       height="14"
-      style={{ position: "absolute", left: `${villager.field.x + 3.5}%`, top: `${villager.field.y + 3.5}%` }}
+      style={{ position: "absolute", left: "-36px", top: "10px" }}
     >
       {goats > 0 &&
         <g stroke="#6b5a44" strokeWidth="1.5" strokeLinecap="round" fill="none">
@@ -223,7 +223,7 @@ const StickVillager = ({ villager }) => {
       viewBox="0 0 20 34"
       width="20"
       height="34"
-      style={{ position: "absolute", left: `${villager.x}%`, top: `${villager.y}%`, overflow: "visible" }}
+      style={{ position: "absolute", left: "16px", top: "10px", overflow: "visible" }}
     >
       <g stroke="#3a3226" strokeWidth="1.5" strokeLinecap="round" fill="none">
         <circle cx="10" cy="5" r="4" />
@@ -238,6 +238,52 @@ const StickVillager = ({ villager }) => {
       }
     </svg>
   </HoverTip>
+};
+
+// one group per farmstead, anchored at the field point so the parts lay out in fixed pixels and never overlap
+const Farmstead = ({ villager }) => {
+  return <div style={{ position: "absolute", left: `${villager.field.x}%`, top: `${villager.field.y}%`, width: 0, height: 0 }}>
+    <Field field={villager.field} owner={villager.name} />
+    <FarmAnimals villager={villager} />
+    <StickVillager villager={villager} />
+  </div>
+};
+
+const SEVERITY_LABEL = { mild: "Mild", moderate: "Moderate", severe: "Severe" };
+
+const eventColor = (tone, severity) => {
+  if (tone === "good")
+  {
+    return severity === "mild" ? "#7bb37d" : "#3f8f43";
+  }
+  return severity === "severe" ? "#b3261e" : severity === "moderate" ? "#d2602a" : "#d99b3a";
+};
+
+const EventPanel = ({ events }) => {
+  return <div style={{
+    width: "20vw",
+    minWidth: "230px",
+    height: "100%",
+    overflowY: "auto",
+    border: "2px solid #d4cdb8",
+    borderRadius: "1rem",
+    padding: "0.75rem 0.9rem",
+    background: "#faf7ef",
+    boxSizing: "border-box",
+  }}>
+    <div style={{ fontWeight: "bold", fontSize: "1rem", marginBottom: "0.6rem" }}>Village Chronicle</div>
+    {events.length === 0
+      ? <div style={{ color: "#999", fontSize: "0.85rem" }}>All has been quiet so far.</div>
+      : events.map((e) =>
+          <div key={e.key} style={{ borderLeft: `4px solid ${eventColor(e.tone, e.severity)}`, paddingLeft: "0.55rem", marginBottom: "0.7rem" }}>
+            <div style={{ fontSize: "0.68rem", color: "#999", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+              {e.season}, Year {e.year} · {SEVERITY_LABEL[e.severity]}
+            </div>
+            <div style={{ fontWeight: 600, fontSize: "0.85rem", color: eventColor(e.tone, e.severity) }}>{e.title}</div>
+            <div style={{ fontSize: "0.8rem", color: "#555" }}>{e.message}</div>
+          </div>
+        )}
+  </div>
 };
 
 const Stat = ({ label, value }) => {
@@ -272,6 +318,10 @@ const reportSummary = (report) => {
   if (report.taxCollected >= 1)
   {
     parts.push(`Property taxes brought ${formatMoney(report.taxCollected)} to the treasury.`);
+  }
+  if (report.dukeTaxPaid >= 1)
+  {
+    parts.push(`The village paid ${formatMoney(report.dukeTaxPaid)} to the duke.`);
   }
   if (report.hunted + report.foraged >= 1)
   {
@@ -343,6 +393,11 @@ const VillageSim = () => {
       </HoverTip>
       <Stat label="Treasury" value={formatMoney(treasury)} />
       <Stat label="Villager savings" value={formatMoney(totalSavings)} />
+      <HoverTip content={`The duke skims ${formatMoney(DUKE.perFamilyPerSeasonCc * game.dukeTaxLevel)} per family from the treasury each season at this rate`}>
+        <div>
+          <Stat label="Duke's tax" value={`${game.dukeTaxLevel}×`} />
+        </div>
+      </HoverTip>
       <Button onClick={() => setGame(simulateSeason(game))}>End Season</Button>
     </div>
 
@@ -406,26 +461,27 @@ const VillageSim = () => {
       </div>
     }
 
-    <div style={{
-      position: "relative",
-      width: "75vw",
-      height: "70vh",
-      backgroundColor: "#F0EAD6",
-      borderRadius: "1rem",
-      border: "2px solid #d4cdb8",
-      overflow: "hidden",
-    }}>
-      {built.wards && <WardRing />}
-      {villagers.map((villager) => <Field key={villager.id} field={villager.field} owner={villager.name} />)}
-      {villagers.map((villager) => <FarmAnimals key={villager.id} villager={villager} />)}
-      {built.mill && <Mill />}
-      {built.smokehouse && <Smokehouse />}
-      {built.mine && <Mine />}
-      <Well />
-      {retinue.map((guard, i) =>
-        <StickRetinue key={guard.id} guard={guard} index={i} count={retinue.length} />
-      )}
-      {villagers.map((villager) => <StickVillager key={villager.id} villager={villager} />)}
+    <div style={{ display: "flex", gap: "1rem", width: "94vw", maxWidth: "1700px", height: "70vh", justifyContent: "center" }}>
+      <div style={{
+        position: "relative",
+        flex: 1,
+        height: "100%",
+        backgroundColor: "#F0EAD6",
+        borderRadius: "1rem",
+        border: "2px solid #d4cdb8",
+        overflow: "hidden",
+      }}>
+        {built.wards && <WardRing />}
+        {villagers.map((villager) => <Farmstead key={villager.id} villager={villager} />)}
+        {built.mill && <Mill />}
+        {built.smokehouse && <Smokehouse />}
+        {built.mine && <Mine />}
+        <Well />
+        {retinue.map((guard, i) =>
+          <StickRetinue key={guard.id} guard={guard} index={i} count={retinue.length} />
+        )}
+      </div>
+      <EventPanel events={game.events} />
     </div>
 
     {report &&
