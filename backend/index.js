@@ -244,6 +244,41 @@ app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
   }
 });
 
+// Pick one random song from the directory, grouped the same way as /directory
+// so a group's representative (lowest id) link/title is what gets returned.
+app.get('/directory/random', directoryLimiter, requireSecret, (req, res) => {
+  try {
+    const group = db
+      .prepare(`
+        SELECT MIN(id) AS firstId, COUNT(*) AS variantCount
+        FROM directory_songs
+        GROUP BY LOWER(title), LOWER(artist)
+        ORDER BY RANDOM()
+        LIMIT 1
+      `)
+      .get();
+
+    if (!group) {
+      return res.status(404).send('Directory is empty');
+    }
+
+    const song = db
+      .prepare('SELECT title, artist, link, views FROM directory_songs WHERE id = ?')
+      .get(group.firstId);
+
+    res.json({
+      title: song.title,
+      artist: song.artist,
+      link: song.link,
+      views: song.views,
+      variantCount: group.variantCount,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('Internal Error');
+  }
+});
+
 // Get the queue
 app.get('/songs', requireSecret, (req, res) => {
   try {

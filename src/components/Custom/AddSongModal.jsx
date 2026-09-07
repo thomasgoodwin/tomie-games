@@ -9,6 +9,7 @@ import {
 import { isValidUrl } from "@/util";
 
 const PAGE_SIZE = 20;
+const MAX_REROLLS = 5;
 
 const fetchDirectory = async (apiUrl, secret, { q, page }) => {
   const params = new URLSearchParams({ page, pageSize: PAGE_SIZE });
@@ -20,6 +21,16 @@ const fetchDirectory = async (apiUrl, secret, { q, page }) => {
   });
   if (!response.ok) {
     throw new Error('Failed to fetch directory');
+  }
+  return response.json();
+};
+
+const fetchRandomSong = async (apiUrl, secret) => {
+  const response = await fetch(`${apiUrl}/directory/random`, {
+    headers: { 'X-Queue-Secret': secret },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to pick a random song');
   }
   return response.json();
 };
@@ -116,6 +127,98 @@ const DirectoryRow = ({ song, onAdd }) => {
   );
 };
 
+// Shown in place of the search results once "I'm Feeling Lucky" is clicked.
+// The song is only added when the user confirms; rerolling picks a new
+// random song but does not add anything either. rerollsUsed/onReroll are
+// lifted to the parent so the count survives going back to browse and
+// picking lucky again, and it only resets when the modal itself reopens.
+const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => {
+  const [song, setSong] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [addStatus, setAddStatus] = useState("idle"); // idle | adding | added | error
+
+  const rerollsLeft = MAX_REROLLS - rerollsUsed;
+
+  const pick = async () => {
+    setLoading(true);
+    setError(null);
+    setAddStatus("idle");
+    try {
+      const data = await fetchRandomSong(apiUrl, secret);
+      setSong(data);
+    } catch {
+      setError("Failed to pick a song.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    pick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <Button size="sm" variant="ghost" onClick={onBack}>
+        ← Back to search
+      </Button>
+      {loading && <p style={{ marginTop: "1rem" }}>Picking a song...</p>}
+      {!loading && error && <p style={{ marginTop: "1rem" }}>{error}</p>}
+      {!loading && !error && song && (
+        <div style={{
+          marginTop: "1rem",
+          padding: "1.25rem 1rem",
+          border: "1px solid rgba(6, 182, 212, 0.3)",
+          borderLeft: "3px solid #06B6D4",
+          borderRadius: "6px",
+          background: "rgba(6, 182, 212, 0.06)",
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: "1.15rem", fontWeight: "600" }}>{song.title}</div>
+          <div style={{ fontSize: ".9rem", opacity: 0.75, marginTop: ".15rem" }}>
+            {song.artist || "Unknown Artist"}
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: ".75rem", marginTop: "1rem" }}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={rerollsLeft <= 0 || loading}
+              onClick={async () => {
+                onReroll();
+                await pick();
+              }}
+            >
+              Reroll{rerollsLeft > 0 ? ` (${rerollsLeft} left)` : ""}
+            </Button>
+            <Button
+              size="sm"
+              background={addStatus === "error" ? "#DC2626" : "#06B6D4"}
+              color="white"
+              _hover={{ background: addStatus === "error" ? "#B91C1C" : "#0891B2" }}
+              loading={addStatus === "adding"}
+              disabled={addStatus === "added"}
+              onClick={async () => {
+                setAddStatus("adding");
+                const ok = await onAdd(song.link, song.title);
+                setAddStatus(ok ? "added" : "error");
+              }}
+            >
+              {addStatus === "added" ? "Added" : addStatus === "error" ? "Failed - Retry" : "Add to Queue"}
+            </Button>
+          </div>
+          {rerollsLeft <= 0 && (
+            <p style={{ fontSize: ".8rem", opacity: 0.7, marginTop: ".75rem" }}>
+              No rerolls left for this session. Add this one, or close and reopen the dialog to try again.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AddSongModal = ({
   open,
   onOpenChange,
@@ -135,9 +238,18 @@ const AddSongModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [linkStatus, setLinkStatus] = useState("idle"); // idle | adding | error
+  const [showLucky, setShowLucky] = useState(false);
+  const [rerollsUsed, setRerollsUsed] = useState(0);
 
   const urlValid = isValidUrl(newLink);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    if (!open) {
+      setShowLucky(false);
+      setRerollsUsed(0);
+    }
+  }, [open]);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedQuery(query), 350);
@@ -203,18 +315,37 @@ const AddSongModal = ({
                     <p style={{ marginTop: "1rem" }}>
                       The directory needs a connected queue and isn't available in demo mode.
                     </p>
+                  ) : showLucky ? (
+                    <LuckyPick
+                      apiUrl={apiUrl}
+                      secret={secret}
+                      onAdd={onAddKnownSong}
+                      onBack={() => setShowLucky(false)}
+                      rerollsUsed={rerollsUsed}
+                      onReroll={() => setRerollsUsed((r) => r + 1)}
+                    />
                   ) : (
                     <>
-                      <Input
-                        size="md"
-                        value={query}
-                        placeholder="Search by title or artist..."
-                        variant="subtle"
-                        backgroundColor={"white"}
-                        color="black"
-                        marginTop={"1rem"}
-                        onChange={(e) => setQuery(e.target.value)}
-                      />
+                      <div style={{ display: "flex", gap: ".5rem", marginTop: "1rem" }}>
+                        <Input
+                          size="md"
+                          value={query}
+                          placeholder="Search by title or artist..."
+                          variant="subtle"
+                          backgroundColor={"white"}
+                          color="black"
+                          flex={1}
+                          onChange={(e) => setQuery(e.target.value)}
+                        />
+                        <Button
+                          size="md"
+                          variant="outline"
+                          flexShrink={0}
+                          onClick={() => setShowLucky(true)}
+                        >
+                          I'm Feeling Lucky
+                        </Button>
+                      </div>
                       <div style={{ marginTop: ".75rem", maxHeight: "320px", overflowY: "auto" }}>
                         {loading && <p>Loading...</p>}
                         {!loading && error && <p>{error}</p>}
