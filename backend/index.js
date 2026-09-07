@@ -244,34 +244,52 @@ app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
   }
 });
 
+// Each reroll narrows the pool to a smaller top slice by views, so repeated
+// rerolls bias toward increasingly well known songs instead of just reshuffling
+// the same odds.
+const RANDOM_PICK_TOP_PERCENTILES = [20, 10, 5, 2.5, 1.25];
+
 // Pick one random song from the directory, grouped the same way as /directory
 // so a group's representative (lowest id) link/title is what gets returned.
 app.get('/directory/random', directoryLimiter, requireSecret, (req, res) => {
   try {
-    const group = db
-      .prepare(`
-        SELECT MIN(id) AS firstId, COUNT(*) AS variantCount
-        FROM directory_songs
-        GROUP BY LOWER(title), LOWER(artist)
-        ORDER BY RANDOM()
-        LIMIT 1
-      `)
-      .get();
+    const rerollIndex = Math.min(
+      Math.max(parseInt(req.query.reroll, 10) || 0, 0),
+      RANDOM_PICK_TOP_PERCENTILES.length - 1
+    );
+    const topPercent = RANDOM_PICK_TOP_PERCENTILES[rerollIndex];
 
-    if (!group) {
+    const groups = db
+      .prepare(`
+        SELECT g.firstId, g.variantCount, d.views
+        FROM (
+          SELECT MIN(id) AS firstId, COUNT(*) AS variantCount
+          FROM directory_songs
+          GROUP BY LOWER(title), LOWER(artist)
+        ) g
+        JOIN directory_songs d ON d.id = g.firstId
+        ORDER BY d.views DESC
+      `)
+      .all();
+
+    if (groups.length === 0) {
       return res.status(404).send('Directory is empty');
     }
 
+    const poolSize = Math.max(1, Math.ceil(groups.length * (topPercent / 100)));
+    const pool = groups.slice(0, poolSize);
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+
     const song = db
       .prepare('SELECT title, artist, link, views FROM directory_songs WHERE id = ?')
-      .get(group.firstId);
+      .get(picked.firstId);
 
     res.json({
       title: song.title,
       artist: song.artist,
       link: song.link,
       views: song.views,
-      variantCount: group.variantCount,
+      variantCount: picked.variantCount,
     });
   } catch (e) {
     console.error(e);

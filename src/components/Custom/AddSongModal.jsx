@@ -25,8 +25,9 @@ const fetchDirectory = async (apiUrl, secret, { q, page }) => {
   return response.json();
 };
 
-const fetchRandomSong = async (apiUrl, secret) => {
-  const response = await fetch(`${apiUrl}/directory/random`, {
+const fetchRandomSong = async (apiUrl, secret, reroll = 0) => {
+  const params = new URLSearchParams({ reroll });
+  const response = await fetch(`${apiUrl}/directory/random?${params}`, {
     headers: { 'X-Queue-Secret': secret },
   });
   if (!response.ok) {
@@ -140,12 +141,12 @@ const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => 
 
   const rerollsLeft = MAX_REROLLS - rerollsUsed;
 
-  const pick = async () => {
+  const pick = async (reroll) => {
     setLoading(true);
     setError(null);
     setAddStatus("idle");
     try {
-      const data = await fetchRandomSong(apiUrl, secret);
+      const data = await fetchRandomSong(apiUrl, secret, reroll);
       setSong(data);
     } catch {
       setError("Failed to pick a song.");
@@ -155,7 +156,7 @@ const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => 
   };
 
   useEffect(() => {
-    pick();
+    pick(rerollsUsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -187,7 +188,7 @@ const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => 
               disabled={rerollsLeft <= 0 || loading}
               onClick={async () => {
                 onReroll();
-                await pick();
+                await pick(rerollsUsed + 1);
               }}
             >
               Reroll{rerollsLeft > 0 ? ` (${rerollsLeft} left)` : ""}
@@ -210,7 +211,7 @@ const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => 
           </div>
           {rerollsLeft <= 0 && (
             <p style={{ fontSize: ".8rem", opacity: 0.7, marginTop: ".75rem" }}>
-              No rerolls left for this session. Add this one, or close and reopen the dialog to try again.
+              No rerolls left for this session.
             </p>
           )}
         </div>
