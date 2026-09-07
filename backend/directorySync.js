@@ -5,6 +5,7 @@
 const ADDED_COLUMNS = [
   { name: 'views', type: 'INTEGER' },
   { name: 'channel', type: 'TEXT' },
+  { name: 'language', type: 'TEXT' },
 ];
 
 export const ensureDirectoryTable = (db) => {
@@ -24,15 +25,16 @@ export const ensureDirectoryTable = (db) => {
   }
   db.exec(`CREATE INDEX IF NOT EXISTS idx_directory_title ON directory_songs(title)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_directory_group ON directory_songs(title, artist)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_directory_language ON directory_songs(language)`);
 };
 
 export const syncDirectory = (db, songs) => {
   ensureDirectoryTable(db);
-  const insert = db.prepare('INSERT INTO directory_songs (title, artist, link, views, channel) VALUES (?, ?, ?, ?, ?)');
+  const insert = db.prepare('INSERT INTO directory_songs (title, artist, link, views, channel, language) VALUES (?, ?, ?, ?, ?, ?)');
   const insertAll = db.transaction((rows) => {
     db.prepare('DELETE FROM directory_songs').run();
     for (const row of rows) {
-      insert.run(row.title, row.artist, row.link, row.views ?? null, row.channel ?? null);
+      insert.run(row.title, row.artist, row.link, row.views ?? null, row.channel ?? null, row.language ?? null);
     }
   });
   insertAll(songs);

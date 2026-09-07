@@ -5,16 +5,21 @@ import {
   Input,
   Button,
   Tabs,
+  Checkbox,
 } from '@chakra-ui/react';
 import { isValidUrl } from "@/util";
 
 const PAGE_SIZE = 20;
 const MAX_REROLLS = 5;
+const DEFAULT_LANGUAGES = ["English"];
 
-const fetchDirectory = async (apiUrl, secret, { q, page }) => {
+const fetchDirectory = async (apiUrl, secret, { q, page, languages }) => {
   const params = new URLSearchParams({ page, pageSize: PAGE_SIZE });
   if (q) {
     params.set("q", q);
+  }
+  if (languages?.length) {
+    params.set("languages", languages.join(","));
   }
   const response = await fetch(`${apiUrl}/directory?${params}`, {
     headers: { 'X-Queue-Secret': secret },
@@ -25,8 +30,11 @@ const fetchDirectory = async (apiUrl, secret, { q, page }) => {
   return response.json();
 };
 
-const fetchRandomSong = async (apiUrl, secret, reroll = 0) => {
+const fetchRandomSong = async (apiUrl, secret, reroll = 0, languages = []) => {
   const params = new URLSearchParams({ reroll });
+  if (languages.length) {
+    params.set("languages", languages.join(","));
+  }
   const response = await fetch(`${apiUrl}/directory/random?${params}`, {
     headers: { 'X-Queue-Secret': secret },
   });
@@ -34,6 +42,53 @@ const fetchRandomSong = async (apiUrl, secret, reroll = 0) => {
     throw new Error('Failed to pick a random song');
   }
   return response.json();
+};
+
+const fetchLanguages = async (apiUrl, secret) => {
+  const response = await fetch(`${apiUrl}/directory/languages`, {
+    headers: { 'X-Queue-Secret': secret },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch languages');
+  }
+  return response.json();
+};
+
+// Shared by both the search results and "I'm Feeling Lucky" sides of the
+// modal. At least one language must stay checked, so unchecking the last one
+// is a no-op rather than leaving the filter empty (which would just mean "no
+// songs match").
+const LanguageFilter = ({ languages, selected, onChange }) => {
+  if (languages.length === 0) {
+    return null;
+  }
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: ".75rem", marginTop: ".75rem" }}>
+      {languages.map((language) => {
+        const checked = selected.includes(language);
+        return (
+          <Checkbox.Root
+            key={language}
+            size="sm"
+            checked={checked}
+            onCheckedChange={() => {
+              if (checked) {
+                if (selected.length > 1) {
+                  onChange(selected.filter((l) => l !== language));
+                }
+              } else {
+                onChange([...selected, language]);
+              }
+            }}
+          >
+            <Checkbox.HiddenInput />
+            <Checkbox.Control />
+            <Checkbox.Label>{language}</Checkbox.Label>
+          </Checkbox.Root>
+        );
+      })}
+    </div>
+  );
 };
 
 const AddButton = ({ onAdd, link, title, size = "sm" }) => {
@@ -133,7 +188,7 @@ const DirectoryRow = ({ song, onAdd }) => {
 // random song but does not add anything either. rerollsUsed/onReroll are
 // lifted to the parent so the count survives going back to browse and
 // picking lucky again, and it only resets when the modal itself reopens.
-const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => {
+const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll, languages }) => {
   const [song, setSong] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -146,7 +201,7 @@ const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => 
     setError(null);
     setAddStatus("idle");
     try {
-      const data = await fetchRandomSong(apiUrl, secret, reroll);
+      const data = await fetchRandomSong(apiUrl, secret, reroll, languages);
       setSong(data);
     } catch {
       setError("Failed to pick a song.");
@@ -157,8 +212,10 @@ const LuckyPick = ({ apiUrl, secret, onAdd, onBack, rerollsUsed, onReroll }) => 
 
   useEffect(() => {
     pick(rerollsUsed);
+    // Re-picks when the language filter changes (the parent also resets
+    // rerollsUsed to 0 in that case); reroll clicks call pick() directly.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [languages]);
 
   return (
     <div style={{ marginTop: "1rem" }}>
@@ -241,9 +298,16 @@ const AddSongModal = ({
   const [linkStatus, setLinkStatus] = useState("idle"); // idle | adding | error
   const [showLucky, setShowLucky] = useState(false);
   const [rerollsUsed, setRerollsUsed] = useState(0);
+  const [availableLanguages, setAvailableLanguages] = useState(DEFAULT_LANGUAGES);
+  const [selectedLanguages, setSelectedLanguages] = useState(DEFAULT_LANGUAGES);
 
   const urlValid = isValidUrl(newLink);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const handleLanguagesChange = (nextLanguages) => {
+    setSelectedLanguages(nextLanguages);
+    setRerollsUsed(0);
+  };
 
   useEffect(() => {
     if (!open) {
@@ -266,9 +330,24 @@ const AddSongModal = ({
       return;
     }
     let cancelled = false;
+    fetchLanguages(apiUrl, secret)
+      .then((data) => {
+        if (!cancelled && data.length > 0) {
+          setAvailableLanguages(data);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open, demoMode, apiUrl, secret]);
+
+  useEffect(() => {
+    if (!open || demoMode) {
+      return;
+    }
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchDirectory(apiUrl, secret, { q: debouncedQuery, page })
+    fetchDirectory(apiUrl, secret, { q: debouncedQuery, page, languages: selectedLanguages })
       .then((data) => {
         if (cancelled) {
           return;
@@ -287,7 +366,7 @@ const AddSongModal = ({
         }
       });
     return () => { cancelled = true; };
-  }, [open, demoMode, apiUrl, secret, debouncedQuery, page]);
+  }, [open, demoMode, apiUrl, secret, debouncedQuery, page, selectedLanguages]);
 
   return (
     <Dialog.Root
@@ -317,16 +396,29 @@ const AddSongModal = ({
                       The directory needs a connected queue and isn't available in demo mode.
                     </p>
                   ) : showLucky ? (
-                    <LuckyPick
-                      apiUrl={apiUrl}
-                      secret={secret}
-                      onAdd={onAddKnownSong}
-                      onBack={() => setShowLucky(false)}
-                      rerollsUsed={rerollsUsed}
-                      onReroll={() => setRerollsUsed((r) => r + 1)}
-                    />
+                    <>
+                      <LanguageFilter
+                        languages={availableLanguages}
+                        selected={selectedLanguages}
+                        onChange={handleLanguagesChange}
+                      />
+                      <LuckyPick
+                        apiUrl={apiUrl}
+                        secret={secret}
+                        onAdd={onAddKnownSong}
+                        onBack={() => setShowLucky(false)}
+                        rerollsUsed={rerollsUsed}
+                        onReroll={() => setRerollsUsed((r) => r + 1)}
+                        languages={selectedLanguages}
+                      />
+                    </>
                   ) : (
                     <>
+                      <LanguageFilter
+                        languages={availableLanguages}
+                        selected={selectedLanguages}
+                        onChange={handleLanguagesChange}
+                      />
                       <div style={{ display: "flex", gap: ".5rem", marginTop: "1rem" }}>
                         <Input
                           size="md"

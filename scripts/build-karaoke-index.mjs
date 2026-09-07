@@ -24,6 +24,7 @@ import { writeFile, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { detectLanguage } from "./detectLanguage.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_PATH = path.join(__dirname, "..", "backend", "karaoke-index.json");
@@ -269,7 +270,14 @@ const buildIndex = async () => {
       if (!parsed || (parsed.artist && /karaoke/i.test(parsed.artist))) {
         continue;
       }
-      newSongs.push({ title: parsed.title, artist: parsed.artist, link: entry.url, views: entry.view_count ?? null, channel });
+      newSongs.push({
+        title: parsed.title,
+        artist: parsed.artist,
+        link: entry.url,
+        views: entry.view_count ?? null,
+        channel,
+        language: detectLanguage(parsed.title, parsed.artist),
+      });
       matched += 1;
     }
     console.log(`  ${matched} new songs (${entries.length} videos checked)`);

@@ -196,12 +196,22 @@ app.delete("/admin", requireSecret, (req, res) => {
 // per-channel expand.
 app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
   const q = (req.query.q || '').trim();
+  const languages = (req.query.languages || '').split(',').map((l) => l.trim()).filter(Boolean);
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize, 10) || 20));
   const offset = (page - 1) * pageSize;
 
-  const where = q ? 'WHERE title LIKE ? OR artist LIKE ?' : '';
-  const params = q ? [`%${q}%`, `%${q}%`] : [];
+  const conditions = [];
+  const params = [];
+  if (q) {
+    conditions.push('(title LIKE ? OR artist LIKE ?)');
+    params.push(`%${q}%`, `%${q}%`);
+  }
+  if (languages.length > 0) {
+    conditions.push(`language IN (${languages.map(() => '?').join(',')})`);
+    params.push(...languages);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   try {
     const total = db
@@ -244,6 +254,24 @@ app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
   }
 });
 
+// Distinct languages actually present in the directory, for the search/random
+// language checkboxes. English sorts first since it's the default selection.
+app.get('/directory/languages', directoryLimiter, requireSecret, (req, res) => {
+  try {
+    const rows = db
+      .prepare(`
+        SELECT DISTINCT language FROM directory_songs
+        WHERE language IS NOT NULL
+        ORDER BY CASE WHEN language = 'English' THEN 0 ELSE 1 END, language ASC
+      `)
+      .all();
+    res.json(rows.map((r) => r.language));
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('Internal Error');
+  }
+});
+
 // Each reroll narrows the pool to a smaller top slice by views, so repeated
 // rerolls bias toward increasingly well known songs instead of just reshuffling
 // the same odds.
@@ -259,18 +287,21 @@ app.get('/directory/random', directoryLimiter, requireSecret, (req, res) => {
     );
     const topPercent = RANDOM_PICK_TOP_PERCENTILES[rerollIndex];
 
+    const languages = (req.query.languages || '').split(',').map((l) => l.trim()).filter(Boolean);
+    const where = languages.length > 0 ? `WHERE language IN (${languages.map(() => '?').join(',')})` : '';
+
     const groups = db
       .prepare(`
         SELECT g.firstId, g.variantCount, d.views
         FROM (
           SELECT MIN(id) AS firstId, COUNT(*) AS variantCount
-          FROM directory_songs
+          FROM directory_songs ${where}
           GROUP BY LOWER(title), LOWER(artist)
         ) g
         JOIN directory_songs d ON d.id = g.firstId
         ORDER BY d.views DESC
       `)
-      .all();
+      .all(...languages);
 
     if (groups.length === 0) {
       return res.status(404).send('Directory is empty');
