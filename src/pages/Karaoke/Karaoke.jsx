@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import YouTubePlayer from "../../components/Custom/YoutubePlayer";
-import { getYouTubeTitle, isLocalhost, isValidUrl } from "@/util";
+import { getYouTubeTitle, isLocalhost } from "@/util";
 import { useQueueSocket } from "@/components/Custom/useQueueSocket";
 import { v4 as uuidv4 } from 'uuid';
 import { AnimatePresence, motion } from "motion/react";
@@ -8,7 +8,8 @@ import {
   Dialog,
   Portal,
   Input,
-  Button
+  Button,
+  QrCode
 } from '@chakra-ui/react';
 import {
   DndContext,
@@ -25,6 +26,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import SortableItem from "@/components/Custom/SortableItem";
+import AddSongModal from "@/components/Custom/AddSongModal";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
 
@@ -115,6 +117,7 @@ const Karaoke = () => {
   const [newLink, setNewLink] = useState("");
   const [manualTitle, setManualTitle] = useState("");
   const [showManualTitleModal, setShowManualTitleModal] = useState(false);
+  const [showAddSongModal, setShowAddSongModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminActive, setAdminActive] = useState(false);
   const [queueCollapsed, setQueueCollapsed] = useState(false);
@@ -129,18 +132,30 @@ const Karaoke = () => {
     setQueue((prev) => prev.filter((song) => song.id !== id));
   };
 
+  const addSongWithTitle = async (link, title) => {
+    if (demoMode) {
+      setQueue((prev) => [...prev, { id: uuidv4(), url: link, title }]);
+      return true;
+    }
+    try {
+      await sendAddRequest(apiUrl, secret, link, title);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   const addSongToDB = async (newLink) => {
     const title = await getYouTubeTitle(newLink);
     if (title === undefined) {
       setShowManualTitleModal(true);
-    } else {
-      if (demoMode) {
-        setQueue((prev) => [...prev, { id: uuidv4(), url: newLink, title }]);
-      } else {
-        sendAddRequest(apiUrl, secret, newLink, title);
-      }
+      return true;
+    }
+    const ok = await addSongWithTitle(newLink, title);
+    if (ok) {
       setNewLink("");
     }
+    return ok;
   }
 
   useQueueSocket(
@@ -206,10 +221,6 @@ const Karaoke = () => {
     })
   );
 
-  const urlValid = useMemo(() => {
-    return isValidUrl(newLink);
-  }, [newLink])
-
   const isMobile = navigator.userAgentData?.mobile ?? /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   useEffect(() => {
     if (isMobile) {
@@ -259,6 +270,15 @@ const Karaoke = () => {
   const collapsible = isAdmin && !isMobile;
 
   const queueContent = <>
+    {!demoMode && <QrCode.Root
+      value={`${window.location.origin}/karaoke/${secret}`}
+      size="md"
+      style={{ alignSelf: "center", marginBottom: ".5rem" }}
+    >
+      <QrCode.Frame>
+        <QrCode.Pattern />
+      </QrCode.Frame>
+    </QrCode.Root>}
     <h2 style={{
       fontSize: "2rem",
       fontWeight: "700",
@@ -290,49 +310,28 @@ const Karaoke = () => {
         })}
       </SortableContext>
     </DndContext>
-    <div style={{ display: "flex" }}>
-      <Input
-        size="md"
-        value={newLink}
-        placeholder="Paste a YouTube link..."
-        variant="subtle"
-        backgroundColor={"rgba(255,255,255,0.95)"}
-        borderTopRightRadius={"0px"}
-        borderBottomRightRadius={"0px"}
-        borderTopLeftRadius={"8px"}
-        borderBottomLeftRadius={"8px"}
-        height="50px"
-        color="black"
-        onChange={(e) => {
-          setNewLink(e.target.value)
-        }}
-      />
-      <Button
-        size="md"
-        borderTopLeftRadius={"0px"}
-        borderBottomLeftRadius={"0px"}
-        display={"flex"}
-        alignItems={"center"}
-        justifyContent={"center"}
-        fontSize={"1.5rem"}
-        lineHeight={"1"}
-        height="50px"
-        width="50px"
-        minWidth="50px"
-        paddingTop={"0"}
-        paddingBottom={"4px"}
-        paddingX={"0"}
-        background={"#06B6D4"}
-        color={"white"}
-        _hover={{ background: "#0891B2" }}
-        disabled={!urlValid}
-        onClick={() => {
-          addSongToDB(newLink);
-        }}
-      >
-        +
-      </Button>
-    </div>
+    <Button
+      size="md"
+      display={"flex"}
+      alignItems={"center"}
+      justifyContent={"center"}
+      fontSize={"1.5rem"}
+      lineHeight={"1"}
+      height="50px"
+      width="50px"
+      minWidth="50px"
+      alignSelf={"center"}
+      paddingTop={"0"}
+      paddingBottom={"4px"}
+      paddingX={"0"}
+      borderRadius={"8px"}
+      background={"#06B6D4"}
+      color={"white"}
+      _hover={{ background: "#0891B2" }}
+      onClick={() => setShowAddSongModal(true)}
+    >
+      +
+    </Button>
     {!isAdmin && !isMobile && <div style={{ marginTop: "1rem" }}>
       <TakeAdminButton
         apiUrl={apiUrl}
@@ -433,13 +432,9 @@ const Karaoke = () => {
                 <Button
                   disabled={manualTitle.length < 3}
                   variant='ghost'
-                  onClick={async () => {
+                  onClick={() => {
                     setShowManualTitleModal(false);
-                    if (demoMode) {
-                      setQueue((prev) => [...prev, { id: uuidv4(), url: newLink, title: manualTitle }]);
-                    } else {
-                      await sendAddRequest(apiUrl, secret, newLink, manualTitle);
-                    }
+                    addSongWithTitle(newLink, manualTitle);
                     setManualTitle("");
                     setNewLink("");
                   }}
@@ -452,6 +447,17 @@ const Karaoke = () => {
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
+      <AddSongModal
+        open={showAddSongModal}
+        onOpenChange={setShowAddSongModal}
+        apiUrl={apiUrl}
+        secret={secret}
+        demoMode={demoMode}
+        newLink={newLink}
+        setNewLink={setNewLink}
+        onAddLink={() => addSongToDB(newLink)}
+        onAddKnownSong={addSongWithTitle}
+      />
       {isAdmin && <div style={{ flex: isMobile ? undefined : 1, width: isMobile ? "100%" : undefined, minWidth: 0 }}>
         {isAdmin && <YouTubePlayer queue={queue} secret={secret} adminActive={adminActive} isAdmin={isAdmin} demoMode={demoMode} onNextSong={() => deleteSongLocal(queue[0]?.id)} />}
         <AnimatePresence mode="wait">

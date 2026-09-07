@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "aws s3 sync dist/ s3://my-react-site --delete && aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths '/*'"
+    "deploy": "aws s3 sync dist/ s3://my-react-site --delete && aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths '/*'",
+    "build-karaoke-index": "node scripts/build-karaoke-index.mjs"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.25.0",

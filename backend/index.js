@@ -6,8 +6,14 @@ import dotenv from 'dotenv';
 import http from "http";
 import { Server } from "socket.io";
 import { generateAdminToken, hashToken } from './auth.js';
+import { ensureDirectoryTable, syncDirectory } from './directorySync.js';
+import { readFileSync, existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 dotenv.config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const server = http.createServer(app);
@@ -40,6 +46,20 @@ db.prepare(`
   )
 `).run();
 
+// Safety net: scripts/build-karaoke-index.mjs already syncs the directory
+// into the database directly, but this covers a fresh clone/deploy where the
+// committed database predates the committed karaoke-index.json.
+ensureDirectoryTable(db);
+const directoryPath = path.join(__dirname, 'karaoke-index.json');
+if (existsSync(directoryPath)) {
+  const directorySongs = JSON.parse(readFileSync(directoryPath, 'utf8'));
+  const currentCount = db.prepare('SELECT COUNT(*) AS count FROM directory_songs').get().count;
+  if (currentCount !== directorySongs.length) {
+    syncDirectory(db, directorySongs);
+    console.log(`Synced ${directorySongs.length} songs into the queue directory.`);
+  }
+}
+
 app.use(express.json());
 
 app.use(cors({
@@ -53,8 +73,18 @@ const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
   message: 'Too many requests, please try again later.',
+  // /directory gets its own, more generous limiter below: live search-as-
+  // you-type easily burns through a shared 30/min budget on its own, which
+  // was silently starving other requests (like actually adding a song).
+  skip: (req) => req.path === '/directory',
 });
 app.use(limiter);
+
+const directoryLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: 'Too many requests, please try again later.',
+});
 
 const io = new Server(server, {
   cors: {
@@ -157,6 +187,61 @@ app.delete("/admin", requireSecret, (req, res) => {
     newId: null
   });
   res.send(200);
+});
+
+// Search the karaoke directory (paginated). The same song is often uploaded
+// by several of the scraped channels, so rows are grouped by title+artist;
+// each group's "first" variant (lowest id) is what a plain Add uses, and the
+// full variant list (one per channel) is included for the frontend's
+// per-channel expand.
+app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
+  const q = (req.query.q || '').trim();
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize, 10) || 20));
+  const offset = (page - 1) * pageSize;
+
+  const where = q ? 'WHERE title LIKE ? OR artist LIKE ?' : '';
+  const params = q ? [`%${q}%`, `%${q}%`] : [];
+
+  try {
+    const total = db
+      .prepare(`SELECT COUNT(*) AS count FROM (SELECT 1 FROM directory_songs ${where} GROUP BY LOWER(title), LOWER(artist))`)
+      .get(...params).count;
+
+    const groups = db
+      .prepare(`
+        SELECT g.firstId, g.variantCount, d.title, d.artist, d.link, d.views
+        FROM (
+          SELECT MIN(id) AS firstId, COUNT(*) AS variantCount
+          FROM directory_songs ${where}
+          GROUP BY LOWER(title), LOWER(artist)
+        ) g
+        JOIN directory_songs d ON d.id = g.firstId
+        ORDER BY d.title COLLATE NOCASE ASC
+        LIMIT ? OFFSET ?
+      `)
+      .all(...params, pageSize, offset);
+
+    const variantsByGroup = db.prepare(`
+      SELECT id, title, artist, link, views, channel
+      FROM directory_songs
+      WHERE LOWER(title) = LOWER(?) AND LOWER(artist) = LOWER(?)
+      ORDER BY id ASC
+    `);
+    const results = groups.map((group) => ({
+      title: group.title,
+      artist: group.artist,
+      link: group.link,
+      views: group.views,
+      variantCount: group.variantCount,
+      variants: group.variantCount > 1 ? variantsByGroup.all(group.title, group.artist) : undefined,
+    }));
+
+    res.json({ results, total, page, pageSize });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('Internal Error');
+  }
 });
 
 // Get the queue
