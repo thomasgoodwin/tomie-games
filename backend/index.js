@@ -215,7 +215,7 @@ app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
 
   try {
     const total = db
-      .prepare(`SELECT COUNT(*) AS count FROM (SELECT 1 FROM directory_songs ${where} GROUP BY LOWER(title), LOWER(artist))`)
+      .prepare(`SELECT COUNT(*) AS count FROM (SELECT 1 FROM directory_songs ${where} GROUP BY LOWER(RTRIM(title, '. ')), LOWER(artist))`)
       .get(...params).count;
 
     const groups = db
@@ -224,7 +224,7 @@ app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
         FROM (
           SELECT MIN(id) AS firstId, COUNT(*) AS variantCount
           FROM directory_songs ${where}
-          GROUP BY LOWER(title), LOWER(artist)
+          GROUP BY LOWER(RTRIM(title, '. ')), LOWER(artist)
         ) g
         JOIN directory_songs d ON d.id = g.firstId
         ORDER BY d.title COLLATE NOCASE ASC
@@ -232,11 +232,15 @@ app.get('/directory', directoryLimiter, requireSecret, (req, res) => {
       `)
       .all(...params, pageSize, offset);
 
+    // Trailing periods vary by scraped channel ("Feel Good Inc" vs "Feel Good
+    // Inc."), so the group's own title is normalized the same way as the
+    // GROUP BY above before matching variants, or a trailing-period title
+    // would only ever match itself and never join its group's other variants.
     const variantsByGroup = db.prepare(`
       SELECT id, title, artist, link, views, channel
       FROM directory_songs
-      WHERE LOWER(title) = LOWER(?) AND LOWER(artist) = LOWER(?)
-      ORDER BY id ASC
+      WHERE LOWER(RTRIM(title, '. ')) = LOWER(RTRIM(?, '. ')) AND LOWER(artist) = LOWER(?)
+      ORDER BY views DESC
     `);
     const results = groups.map((group) => ({
       title: group.title,
@@ -296,7 +300,7 @@ app.get('/directory/random', directoryLimiter, requireSecret, (req, res) => {
         FROM (
           SELECT MIN(id) AS firstId, COUNT(*) AS variantCount
           FROM directory_songs ${where}
-          GROUP BY LOWER(title), LOWER(artist)
+          GROUP BY LOWER(RTRIM(title, '. ')), LOWER(artist)
         ) g
         JOIN directory_songs d ON d.id = g.firstId
         ORDER BY d.views DESC

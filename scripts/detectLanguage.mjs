@@ -40,7 +40,7 @@ const TAGALOG_WORDS = [
   'pangarap', 'damdamin', 'luha', 'iiyak', 'umiyak', 'alaala',
   'paglisan', 'tadhana', 'kapalaran', 'yakap', 'halik', 'pangako',
   'tapat', 'ligaya', 'kalimutan', 'sasabihin', 'babalik', 'magbalik',
-  'maging', 'lumisan', 'sayang', 'multo',
+  'maging', 'lumisan', 'sayang', 'multo', 'kita', 'minsan', 'iibigin', 'ibig',
 ];
 const TAGALOG_PATTERN = new RegExp(`\\b(${TAGALOG_WORDS.join('|')})\\b`, 'i');
 
