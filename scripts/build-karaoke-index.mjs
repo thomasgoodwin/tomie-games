@@ -156,6 +156,23 @@ const parseMadePopularBy = (rawTitle) => {
   return { title, artist };
 };
 
+// "Title Karaoke Artist" / "Title KARAOKE Artist", e.g. Golden Karaoke. The
+// word itself is the delimiter (case varies), not wrapped in brackets, so
+// this splits on the first standalone "karaoke" rather than going through
+// cleanText's bracket-only karaoke-noise patterns.
+const parseTitleKaraokeArtist = (rawTitle) => {
+  const match = rawTitle.match(/^(.*?)\bkaraoke\b(.*)$/i);
+  if (!match) {
+    return null;
+  }
+  const title = cleanText(match[1]);
+  const artist = cleanText(match[2]);
+  if (!title || !artist) {
+    return null;
+  }
+  return { title, artist };
+};
+
 const CHANNELS = [
   { url: "https://www.youtube.com/@ZoomKaraokeOfficial/videos", channel: "Zoom Karaoke", parse: parseArtistDashTitle },
   { url: "https://www.youtube.com/@AtomicKaraoke/videos", channel: "Atomic Karaoke", parse: parseTitleDashArtist },
@@ -163,6 +180,7 @@ const CHANNELS = [
   { url: "https://www.youtube.com/@hburgerkaraoke/videos", channel: "Hamburger Karaoke", parse: parseHamburger },
   { url: "https://www.youtube.com/@partytymekaraokechannel6967/videos", channel: "Party Tyme Karaoke", parse: parseArtistDashTitle },
   { url: "https://www.youtube.com/@NickyDeeKaraoke/videos", channel: "NickyDee Karaoke", parse: parseArtistDashTitle },
+  { url: "https://www.youtube.com/@GOLDENKARAOKE/videos", channel: "Golden Karaoke", parse: parseTitleKaraokeArtist },
 ];
 
 const UNAVAILABLE_TITLE = /^\[(private|deleted|unavailable)[^\]]*\]$/i;
