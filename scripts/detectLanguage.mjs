@@ -8,6 +8,8 @@
 // English-language karaoke network and the vast majority of entries are
 // English songs even when an artist name carries an accent (Beyoncé, Bublé).
 
+import { readFileSync } from 'node:fs';
+
 const SCRIPT_LANGUAGES = [
   { language: 'Korean', pattern: /[가-힯ᄀ-ᇿ]/ },
   { language: 'Japanese', pattern: /[぀-ヿㇰ-ㇿ]/ },
@@ -78,7 +80,17 @@ const MANUAL_LANGUAGE_OVERRIDES = new Map([
   ['judgement -shinpan|null', 'Japanese'],
 ]);
 
-export const LANGUAGES = ['English', 'Tagalog', ...SCRIPT_LANGUAGES.map((s) => s.language)];
+// Bulk hand-checked tags, in the same "title|artist" key format as above.
+// Atomic Karaoke's catalog is mostly OPM, and plenty of Tagalog titles carry
+// none of the TAGALOG_WORDS, so each Atomic song was checked by hand against
+// its lyrics. A few Party Tyme songs in other languages (e.g. French) live
+// here too.
+const LANGUAGE_OVERRIDES_FILE = new URL('./languageOverrides.json', import.meta.url);
+for (const [overrideKey, language] of Object.entries(JSON.parse(readFileSync(LANGUAGE_OVERRIDES_FILE, 'utf8')))) {
+  MANUAL_LANGUAGE_OVERRIDES.set(overrideKey, language);
+}
+
+export const LANGUAGES =['English', 'Tagalog', ...SCRIPT_LANGUAGES.map((s) => s.language)];
 
 export const detectLanguage = (title, artist) => {
   const overrideKey = `${(title ?? '').trim().toLowerCase()}|${(artist ?? 'null').trim().toLowerCase()}`;
