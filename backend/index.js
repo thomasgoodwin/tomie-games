@@ -7,6 +7,7 @@ import http from "http";
 import { Server } from "socket.io";
 import { generateAdminToken, hashToken } from './auth.js';
 import { ensureDirectoryTable, syncDirectory } from './directorySync.js';
+import { setupMonte } from './monte.js';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -105,6 +106,9 @@ io.on("connection", (socket) => {
   const secret = socket.handshake.auth.secret;
   socket.join(secret);
 });
+
+// public namespace, the secret middleware above only guards the default one
+setupMonte(io);
 
 const requireSecret = (req, res, next) => {
   const clientSecret = req.get('X-Queue-Secret');

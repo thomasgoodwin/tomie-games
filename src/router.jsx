@@ -3,6 +3,7 @@ import NotFound from "./pages/NotFound/NotFound";
 import Jeopardy from "./pages/Jeopardy/Jeopardy"
 import Karaoke from "./pages/Karaoke/Karaoke";
 import VillageSim from "./pages/VillageSim/VillageSim";
+import Monte from "./pages/Monte/Monte";
 import App from './App.jsx';
 
 const router = createBrowserRouter([
@@ -25,6 +26,14 @@ const router = createBrowserRouter([
       {
         path: "village-sim",
         element: <VillageSim />,
+      },
+      {
+        path: "monte",
+        element: <Monte />,
+      },
+      {
+        path: "monte/:roomId",
+        element: <Monte />,
       },
     ],
   },
