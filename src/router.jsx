@@ -4,6 +4,7 @@ import Jeopardy from "./pages/Jeopardy/Jeopardy"
 import Karaoke from "./pages/Karaoke/Karaoke";
 import VillageSim from "./pages/VillageSim/VillageSim";
 import Monte from "./pages/Monte/Monte";
+import PendragonStore from "./pages/PendragonStore/PendragonStore";
 import App from './App.jsx';
 
 const router = createBrowserRouter([
@@ -34,6 +35,10 @@ const router = createBrowserRouter([
       {
         path: "monte/:roomId",
         element: <Monte />,
+      },
+      {
+        path: "pendragon-store",
+        element: <PendragonStore />,
       },
     ],
   },
